@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
-import { getResources, resourceAction } from "../api/client.js";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { getResources, resourceAction, confirmResizeReboot } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useDialog } from "../components/DialogProvider.jsx";
 import TerminalModal from "../components/TerminalModal.jsx";
 import EditResourceModal from "../components/EditResourceModal.jsx";
 import ExtendExpiryModal from "../components/ExtendExpiryModal.jsx";
@@ -50,6 +52,9 @@ function ExpiryCell({ r }) {
 
 export default function Resources() {
   const { isAdmin } = useAuth();
+  const { confirm, alert } = useDialog();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const rebootHandled = useRef(null);
   const [resources, setResources] = useState([]);
   const [error, setError] = useState("");
   const [pending, setPending] = useState({});       // vmid -> action label
@@ -76,9 +81,51 @@ export default function Resources() {
     setPage(1);
   }, [query, statusFilter, typeFilter, pageSize]);
 
+  // Deep-link from an approved-resize notification: /resources?reboot=<vmid>&request=<id>.
+  // Prompt the owner to reboot now; on confirm, trigger the reboot and clear the params.
+  useEffect(() => {
+    const vmid = searchParams.get("reboot");
+    const requestId = searchParams.get("request");
+    if (!vmid || !requestId) return;
+    if (rebootHandled.current === requestId) return;
+    if (resources.length === 0) return; // wait for names to load
+    rebootHandled.current = requestId;
+
+    const r = resources.find((x) => String(x.vmid) === String(vmid));
+    const label = r?.name || `VMID ${vmid}`;
+    (async () => {
+      const ok = await confirm({
+        title: "Resize approved — reboot now?",
+        message: `Your resize of ${label} was approved and applied. Reboot it now to bring the new resources online? It will be briefly unavailable.`,
+        confirmLabel: "Reboot now",
+        tone: "danger",
+      });
+      // Clear the query params either way so the prompt doesn't reappear.
+      const next = new URLSearchParams(searchParams);
+      next.delete("reboot"); next.delete("request");
+      setSearchParams(next, { replace: true });
+      if (!ok) return;
+      try {
+        await confirmResizeReboot(requestId);
+        setTimeout(load, 1200);
+        alert({ title: "Reboot started", message: `${label} is rebooting to apply the new size.` });
+      } catch (e) {
+        alert({ title: "Reboot failed", message: e.response?.data?.error || e.message, tone: "danger" });
+      }
+    })();
+  }, [searchParams, resources]);
+
   const act = async (r, action) => {
-    if (action === "delete" && !confirm(`Delete ${r.name} (VMID ${r.vmid})? This cannot be undone.`)) return;
-    if (action === "reset" && !confirm(`Hard reset ${r.name} (VMID ${r.vmid})? This forcibly resets the machine without a clean shutdown and may cause data loss.`)) return;
+    if (action === "delete" && !(await confirm({
+      title: "Delete resource",
+      message: `Delete ${r.name} (VMID ${r.vmid})? This cannot be undone.`,
+      confirmLabel: "Delete", tone: "danger",
+    }))) return;
+    if (action === "reset" && !(await confirm({
+      title: "Hard reset",
+      message: `Hard reset ${r.name} (VMID ${r.vmid})? This forcibly resets the machine without a clean shutdown and may cause data loss.`,
+      confirmLabel: "Hard reset", tone: "danger",
+    }))) return;
     setPending((p) => ({ ...p, [r.vmid]: action }));
     setError("");
     try {
