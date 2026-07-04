@@ -28,6 +28,16 @@ export const CONTAINER_TEMPLATES = [
 // No stacks are hardcoded — the Provision catalog is driven by Proxmox/Mappings.
 export const STACKS = [];
 
+// The full set of packages the provisioning assistant may pre-select. Must stay
+// in sync with PACKAGE_OPTIONS in frontend/src/components/ChatWidget.jsx so every
+// selected package has a checkbox to render.
+export const PACKAGE_CATALOG = [
+  "ansible", "aqt", "awscli", "curl", "docker", "docker-compose", "dotnet-sdk",
+  "git", "go", "grafana", "helm", "htop", "java", "jq", "kubectl", "maven",
+  "mongodb", "mysql", "nginx", "nodejs", "openjdk", "php", "postgres", "postman",
+  "prometheus", "python", "rabbitmq", "redis", "terraform", "tmux", "vim", "yarn",
+];
+
 export function findVmTemplate(id) {
   return VM_TEMPLATES.find((t) => t.id === id);
 }
