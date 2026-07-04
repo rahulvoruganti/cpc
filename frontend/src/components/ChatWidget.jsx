@@ -8,6 +8,7 @@ import {
   getVmTemplates,
   getContainerTemplates,
   getStacks,
+  getEnvironments,
   provisionVm,
   provisionContainer,
   provisionStack,
@@ -141,6 +142,25 @@ function resolveSelectedPackages(proposal, kind) {
   return Array.from(new Set(list));
 }
 
+// A VM must attach to a Proxmox network bridge. When an admin hasn't labelled
+// any networks yet, fall back to the standard default bridge so chat
+// provisioning still works (this is the bridge past deployments used).
+const DEFAULT_ENVIRONMENT = { iface: "vmbr0", label: "vmbr0 (default)" };
+
+function environmentOptions(catalogs) {
+  const envs = catalogs.environments || [];
+  return envs.length ? envs : [DEFAULT_ENVIRONMENT];
+}
+
+// Derive a valid Linux login name from the signed-in user so the proposal is
+// prefilled and never blocks on an empty username.
+function defaultUsernameFrom(user) {
+  const raw = (user?.username || user?.displayName || user?.email || "").split("@")[0];
+  const clean = raw.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 20);
+  if (!clean) return "clouduser";
+  return /^[a-z]/.test(clean) ? clean : `u${clean}`;
+}
+
 function ensureProposalShape(proposal, catalogs) {
   if (!proposal) return null;
 
@@ -174,6 +194,9 @@ function ensureProposalShape(proposal, catalogs) {
   }
 
   const template = catalogs.vmTemplates.find((t) => t.id === proposal.templateId) || catalogs.vmTemplates[0] || null;
+  // A VM must land on a network and have a login user — prefill both so the
+  // proposal is ready to provision without extra typing.
+  const defaultEnv = proposal.environment || environmentOptions(catalogs)[0].iface;
   return {
     ...proposal,
     kind: "vm",
@@ -183,6 +206,9 @@ function ensureProposalShape(proposal, catalogs) {
     cpu: proposal.cpu || 2,
     memoryGB: proposal.memoryGB || 2,
     diskGB: proposal.diskGB || 50,
+    environment: defaultEnv,
+    username: proposal.username || catalogs.defaultUsername || "",
+    sudoAccess: proposal.sudoAccess ?? false,
     packages: resolveSelectedPackages(proposal, "vm"),
   };
 }
@@ -195,6 +221,7 @@ function ProposalEditor({ proposal, catalogs, busy, onChange, onProvision }) {
   const vmTemplates = catalogs.vmTemplates;
   const containerTemplates = catalogs.containerTemplates;
   const stacks = catalogs.stacks;
+  const environments = environmentOptions(catalogs);
   // Single, fully-editable package list — pre-checked from the use case.
   const selectedPackages = (draft.packages || []).filter((pkg) => PACKAGE_OPTIONS.includes(pkg));
 
@@ -266,7 +293,9 @@ function ProposalEditor({ proposal, catalogs, busy, onChange, onProvision }) {
   const hasDisk = draft.kind === "container"
     ? true
     : Number.isFinite(draft.diskGB) && draft.diskGB >= 5 && draft.diskGB <= 2000;
-  const canProvision = hasIdentity && hasCpu && hasMemory && hasDisk;
+  // VMs must land on a network and create a login user (matches the portal form).
+  const hasVmExtras = draft.kind !== "vm" || (!!draft.environment && (draft.username || "").trim().length > 0);
+  const canProvision = hasIdentity && hasCpu && hasMemory && hasDisk && hasVmExtras;
 
   return (
     <div className="chat-proposal">
@@ -341,6 +370,33 @@ function ProposalEditor({ proposal, catalogs, busy, onChange, onProvision }) {
         )}
       </div>
 
+      {draft.kind === "vm" && (
+        <>
+          <div className="field">
+            <label>Environment (network)</label>
+            <select value={draft.environment || ""} onChange={update("environment")}>
+              {environments.map((env) => (
+                <option key={env.iface} value={env.iface}>{env.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="chat-proposal-grid">
+            <div className="field">
+              <label>Login user</label>
+              <input value={draft.username || ""} onChange={update("username")} placeholder="e.g. appuser" autoComplete="off" />
+            </div>
+            <label className="field chat-proposal-sudo">
+              <input
+                type="checkbox"
+                checked={!!draft.sudoAccess}
+                onChange={(e) => onChange({ ...draft, sudoAccess: e.target.checked })}
+              />
+              <span>Grant sudo access</span>
+            </label>
+          </div>
+        </>
+      )}
+
       <div className="field">
         <label>Packages</label>
         <ChatPackageDropdown
@@ -403,7 +459,7 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
   const [provisioningIndex, setProvisioningIndex] = useState(null);
   const [connectTarget, setConnectTarget] = useState(null);
   const [loaded, setLoaded] = useState(false);
-  const [catalogs, setCatalogs] = useState({ vmTemplates: [], containerTemplates: [], stacks: [] });
+  const [catalogs, setCatalogs] = useState({ vmTemplates: [], containerTemplates: [], stacks: [], environments: [] });
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const prevCountRef = useRef(1);
@@ -432,16 +488,17 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
 
     const load = async () => {
       try {
-        const [history, vmTemplates, containerTemplates, stacks] = await Promise.all([
+        const [history, vmTemplates, containerTemplates, stacks, environments] = await Promise.all([
           getChatHistory(),
           getVmTemplates(),
           getContainerTemplates(),
           getStacks(),
+          getEnvironments().catch(() => []),
         ]);
 
         if (cancelled) return;
         if (history.messages?.length) setMessages(history.messages);
-        setCatalogs({ vmTemplates, containerTemplates, stacks });
+        setCatalogs((c) => ({ ...c, vmTemplates, containerTemplates, stacks, environments }));
       } catch {
         try {
           const history = await getChatHistory();
@@ -461,6 +518,12 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
       cancelled = true;
     };
   }, []);
+
+  // Keep a prefill login name derived from the signed-in user, used to
+  // pre-populate VM proposals.
+  useEffect(() => {
+    setCatalogs((c) => ({ ...c, defaultUsername: defaultUsernameFrom(user) }));
+  }, [user?.id]);
 
   // Persist whenever messages change (after the initial load), debounced.
   useEffect(() => {
@@ -534,6 +597,9 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
           diskGB: proposal.diskGB,
           packages: proposal.packages,
           packageSelection: proposal.packageSelection,
+          environment: proposal.environment,
+          username: proposal.username,
+          sudoAccess: proposal.sudoAccess,
         });
       }
 

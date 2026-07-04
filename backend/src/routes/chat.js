@@ -374,7 +374,11 @@ router.post("/chat", async (req, res) => {
 
   try {
     if (name === "resolve_provisioning") {
-      if (sizedArgs.action === "provision" && explicitDetails) {
+      // VMs require an environment (network) and a login user that can only be
+      // chosen in the editable proposal, so never provision a VM immediately —
+      // always return a proposal. Containers/stacks need neither, so they can
+      // provision straight away when the user gave explicit details.
+      if (sizedArgs.action === "provision" && explicitDetails && sizedArgs.kind !== "vm") {
         const template = sizedArgs.kind === "stack"
           ? findStack(sizedArgs.stackId)
           : sizedArgs.kind === "container"

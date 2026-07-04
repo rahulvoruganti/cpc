@@ -2266,6 +2266,12 @@ a { color: var(--accent); text-decoration: none; }
 .chat-proposal-grid .field { margin-bottom: 0; }
 .chat-proposal-actions { display: flex; justify-content: flex-end; margin-top: 4px; }
 .chat-proposal .field:last-child { margin-bottom: 0; }
+.chat-proposal-sudo {
+  display: flex; flex-direction: row; align-items: center; gap: 8px;
+  align-self: end; padding-bottom: 8px; cursor: pointer;
+}
+.chat-proposal-sudo input { width: auto; margin: 0; }
+.chat-proposal-sudo span { font-size: 13px; color: var(--ink-2); }
 .chat-proposal-defaults {
   margin-top: 4px;
 }
