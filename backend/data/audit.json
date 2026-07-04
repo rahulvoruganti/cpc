@@ -3104,6 +3104,21 @@
         "jobId": "iU3yCg3_qp",
         "status": "provisioning"
       }
+    },
+    {
+      "id": "P7kJT_4Kyf",
+      "timestamp": "2026-07-04T06:21:07.069Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "auth.login",
+      "target": "",
+      "status": "success",
+      "detail": {
+        "method": "local"
+      }
     }
   ]
 }

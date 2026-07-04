@@ -26,10 +26,13 @@ const QUICK_PROMPTS = [
   "Suggest a stack for a small web app",
 ];
 
-const DEFAULT_PACKAGES_BY_KIND = {
-  vm: ["python", "nodejs"],
+// Fallback pre-selection when the assistant couldn't infer packages from the
+// use case (e.g. a bare "give me a VM"). Use-case matches from the backend take
+// precedence over these.
+const FALLBACK_PACKAGES_BY_KIND = {
+  vm: ["python"],
   container: ["python"],
-  stack: ["python", "nodejs", "postgres"],
+  stack: ["python", "postgres"],
 };
 
 const PACKAGE_OPTIONS = [
@@ -122,16 +125,26 @@ function ChatPackageDropdown({ options, selected, onToggle }) {
   );
 }
 
+// Resolve the packages that should start out checked: prefer whatever the
+// assistant inferred from the use case, keeping only names we can actually
+// render, and fall back to a light per-kind default when nothing was inferred.
+function resolveSelectedPackages(proposal, kind) {
+  const source =
+    proposal.packageSelection?.selected ||
+    proposal.packageSelection?.effective ||
+    proposal.packages ||
+    proposal.additionalPackages ||
+    proposal.packageSelection?.additional;
+  const known = Array.isArray(source) ? source.filter((pkg) => PACKAGE_OPTIONS.includes(pkg)) : [];
+  const list = known.length ? known : FALLBACK_PACKAGES_BY_KIND[kind] || [];
+  return Array.from(new Set(list));
+}
+
 function ensureProposalShape(proposal, catalogs) {
   if (!proposal) return null;
 
-  const additionalFromProposal = proposal.packageSelection?.additional || proposal.additionalPackages || [];
-
   if (proposal.kind === "stack") {
     const stack = catalogs.stacks.find((s) => s.id === proposal.stackId) || catalogs.stacks[0] || null;
-    const defaults = DEFAULT_PACKAGES_BY_KIND.stack;
-    const additionalPackages = additionalFromProposal.filter((pkg) => !defaults.includes(pkg));
-    const packages = Array.from(new Set([...defaults, ...additionalPackages]));
     return {
       ...proposal,
       kind: "stack",
@@ -141,16 +154,12 @@ function ensureProposalShape(proposal, catalogs) {
       cpu: proposal.cpu || 2,
       memoryGB: proposal.memoryGB || 2,
       diskGB: proposal.diskGB || 50,
-      additionalPackages,
-      packages,
+      packages: resolveSelectedPackages(proposal, "stack"),
     };
   }
 
   if (proposal.kind === "container") {
     const template = catalogs.containerTemplates.find((t) => t.id === proposal.templateId) || catalogs.containerTemplates[0] || null;
-    const defaults = DEFAULT_PACKAGES_BY_KIND.container;
-    const additionalPackages = additionalFromProposal.filter((pkg) => !defaults.includes(pkg));
-    const packages = Array.from(new Set([...defaults, ...additionalPackages]));
     return {
       ...proposal,
       kind: "container",
@@ -159,15 +168,11 @@ function ensureProposalShape(proposal, catalogs) {
       hostname: proposal.hostname || "",
       cpu: proposal.cpu || 2,
       memoryGB: proposal.memoryGB || 2,
-      additionalPackages,
-      packages,
+      packages: resolveSelectedPackages(proposal, "container"),
     };
   }
 
   const template = catalogs.vmTemplates.find((t) => t.id === proposal.templateId) || catalogs.vmTemplates[0] || null;
-  const defaults = DEFAULT_PACKAGES_BY_KIND.vm;
-  const additionalPackages = additionalFromProposal.filter((pkg) => !defaults.includes(pkg));
-  const packages = Array.from(new Set([...defaults, ...additionalPackages]));
   return {
     ...proposal,
     kind: "vm",
@@ -177,8 +182,7 @@ function ensureProposalShape(proposal, catalogs) {
     cpu: proposal.cpu || 2,
     memoryGB: proposal.memoryGB || 2,
     diskGB: proposal.diskGB || 50,
-    additionalPackages,
-    packages,
+    packages: resolveSelectedPackages(proposal, "vm"),
   };
 }
 
@@ -190,49 +194,39 @@ function ProposalEditor({ proposal, catalogs, busy, onChange, onProvision }) {
   const vmTemplates = catalogs.vmTemplates;
   const containerTemplates = catalogs.containerTemplates;
   const stacks = catalogs.stacks;
-  const recommendedDefaults = DEFAULT_PACKAGES_BY_KIND[draft.kind] || [];
-  const additionalOptions = PACKAGE_OPTIONS.filter((pkg) => !recommendedDefaults.includes(pkg));
-  const additionalPackages = (draft.additionalPackages || []).filter((pkg) => !recommendedDefaults.includes(pkg));
-  const effectivePackages = Array.from(new Set([...recommendedDefaults, ...additionalPackages]));
+  // Single, fully-editable package list — pre-checked from the use case.
+  const selectedPackages = (draft.packages || []).filter((pkg) => PACKAGE_OPTIONS.includes(pkg));
 
   const update = (field) => (e) => {
     const value = e.target.type === "number" ? Number(e.target.value) : e.target.value;
     const next = { ...draft, [field]: value };
 
     if (field === "kind") {
+      // Switch identity fields for the new kind but keep the package selection.
       if (value === "stack") {
-        const defaults = DEFAULT_PACKAGES_BY_KIND.stack;
         const nextStack = stacks.find((s) => s.id === next.stackId) || stacks[0] || null;
         next.stackId = nextStack?.id || "";
         next.stackName = nextStack?.name || "";
         next.hostnamePrefix = next.hostnamePrefix || "";
-        next.additionalPackages = [];
-        next.packages = defaults;
         delete next.templateId;
         delete next.templateName;
         delete next.hostname;
       } else if (value === "container") {
-        const defaults = DEFAULT_PACKAGES_BY_KIND.container;
         const nextTemplate = containerTemplates.find((t) => t.id === next.templateId) || containerTemplates[0] || null;
         next.templateId = nextTemplate?.id || "";
         next.templateName = nextTemplate?.name || "";
         next.hostname = next.hostname || "";
-        next.additionalPackages = [];
-        next.packages = defaults;
         delete next.stackId;
         delete next.stackName;
         delete next.hostnamePrefix;
         delete next.diskGB;
       } else {
-        const defaults = DEFAULT_PACKAGES_BY_KIND.vm;
         const nextTemplate = vmTemplates.find((t) => t.id === next.templateId) || vmTemplates[0] || null;
         next.kind = "vm";
         next.templateId = nextTemplate?.id || "";
         next.templateName = nextTemplate?.name || "";
         next.hostname = next.hostname || "";
         next.diskGB = next.diskGB || 50;
-        next.additionalPackages = [];
-        next.packages = defaults;
         delete next.stackId;
         delete next.stackName;
         delete next.hostnamePrefix;
@@ -252,21 +246,14 @@ function ProposalEditor({ proposal, catalogs, busy, onChange, onProvision }) {
     onChange(next);
   };
 
-  const toggleAdditionalPackage = (pkg) => {
-    const nextAdditional = additionalPackages.includes(pkg)
-      ? additionalPackages.filter((p) => p !== pkg)
-      : [...additionalPackages, pkg];
-    const nextPackages = Array.from(new Set([...recommendedDefaults, ...nextAdditional]));
+  const togglePackage = (pkg) => {
+    const nextPackages = selectedPackages.includes(pkg)
+      ? selectedPackages.filter((p) => p !== pkg)
+      : [...selectedPackages, pkg];
     onChange({
       ...draft,
-      additionalPackages: nextAdditional,
       packages: nextPackages,
-      packageSelection: {
-        recommendedDefaults,
-        additional: nextAdditional,
-        selected: nextPackages,
-        effective: nextPackages,
-      },
+      packageSelection: { selected: nextPackages, effective: nextPackages },
     });
   };
 
@@ -353,43 +340,35 @@ function ProposalEditor({ proposal, catalogs, busy, onChange, onProvision }) {
         )}
       </div>
 
-      <div className="field chat-proposal-defaults">
-        <label>Default packages</label>
-        <div className="provision-packages-list">
-          {recommendedDefaults.map((pkg) => (
-            <span key={pkg} className="provision-inline-kind provision-inline-kind-fixed">{pkg}</span>
-          ))}
-        </div>
-      </div>
-
       <div className="field">
-        <label>Additional packages</label>
+        <label>Packages</label>
         <ChatPackageDropdown
-          options={additionalOptions}
-          selected={additionalPackages}
-          onToggle={toggleAdditionalPackage}
+          options={PACKAGE_OPTIONS}
+          selected={selectedPackages}
+          onToggle={togglePackage}
         />
       </div>
 
       <div className="field chat-proposal-defaults">
         <label>Will be installed</label>
         <div className="provision-packages-list">
-          {effectivePackages.map((pkg) => (
-            <span key={pkg} className="provision-inline-kind provision-inline-kind-final">{pkg}</span>
-          ))}
+          {selectedPackages.length > 0 ? (
+            selectedPackages.map((pkg) => (
+              <span key={pkg} className="provision-inline-kind provision-inline-kind-final">{pkg}</span>
+            ))
+          ) : (
+            <span className="muted">No packages selected</span>
+          )}
         </div>
       </div>
 
       <div className="chat-proposal-actions">
         <button className="btn btn-primary btn-sm" disabled={busy || !canProvision} onClick={() => onProvision({
           ...draft,
-          additionalPackages,
-          packages: effectivePackages,
+          packages: selectedPackages,
           packageSelection: {
-            recommendedDefaults,
-            additional: additionalPackages,
-            selected: effectivePackages,
-            effective: effectivePackages,
+            selected: selectedPackages,
+            effective: selectedPackages,
           },
         })}>
           {busy ? "Provisioning…" : "Provision from proposal"}

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { VM_TEMPLATES, CONTAINER_TEMPLATES, STACKS } from "../config/catalog.js";
+import { VM_TEMPLATES, CONTAINER_TEMPLATES, STACKS, PACKAGE_CATALOG } from "../config/catalog.js";
 
 const { GEMINI_API_KEY, GEMINI_MODEL = "gemini-2.5-flash" } = process.env;
 
@@ -21,6 +21,11 @@ const FUNCTION_DECLARATIONS = [
         cpu: { type: "NUMBER", description: "Number of CPU cores." },
         memoryGB: { type: "NUMBER", description: "Memory in GB." },
         diskGB: { type: "NUMBER", description: "Disk size in GB." },
+        packages: {
+          type: "ARRAY",
+          items: { type: "STRING" },
+          description: "Software packages to pre-install, chosen from the allowed package list to fit the user's use case.",
+        },
       },
       required: ["action", "kind"],
     },
@@ -47,6 +52,7 @@ function buildSystemInstruction() {
     ? CONTAINER_TEMPLATES.map((t) => `  - id: "${t.id}", name: "${t.name}"`).join("\n")
     : "  (none configured yet)";
   const stackList = STACKS.map((s) => `  - id: "${s.id}", name: "${s.name}" — ${s.description}`).join("\n");
+  const packageList = PACKAGE_CATALOG.join(", ");
 
   return `You are the provisioning assistant for an internal self-service cloud portal backed by Proxmox.
 Users describe infrastructure they want in free text. Your job is to call exactly one of the
@@ -61,10 +67,14 @@ ${containerList}
 Available stacks:
 ${stackList}
 
+Allowed packages (choose only from this list):
+${packageList}
+
 Rules:
 - Map natural-language OS names to the correct templateId. "redhat", "rhel", "red hat" -> "rhel". "alpine", "linux" (generic) -> "alpine".
 - If the user doesn't specify cpu, memoryGB, or diskGB, choose sensible defaults based on workload intent. Use larger defaults for heavier workloads (e.g., LLM/AI, stress/performance testing, databases) and smaller defaults for lightweight generic requests.
 - If the user doesn't give a hostname, invent a short reasonable one based on the template, e.g. "rhel-vm-01".
+- Always populate the "packages" field by understanding the workload/use case from the whole conversation, choosing only from the allowed package list. Examples: a Next.js / React / Node / frontend app -> ["nodejs", "yarn", "nginx", "git"]; a VM to host containers / Docker / microservices -> ["docker", "docker-compose", "git"]; a Kubernetes node -> ["kubectl", "helm", "docker"]; a Python/Django/Flask/ML app -> ["python", "git"]; a Java/Spring app -> ["openjdk", "maven", "git"]; a .NET app -> ["dotnet-sdk", "git"]; a PHP/Laravel app -> ["php", "nginx", "git"]; a Go app -> ["go", "git"]; databases -> the matching one of ["postgres", "mysql", "mongodb", "redis"]. Pick the packages that genuinely fit what the user described rather than a fixed default.
 - Choose the best-fit kind yourself: use stack for multi-component requests, container only when the user explicitly asks for container or lxc, and otherwise prefer vm.
 - If the user explicitly asks for container/lxc/vm/stack, preserve that requested kind in the function args.
 - If the request is ambiguous about which template (e.g. unknown OS), pick the closest available template rather than refusing.

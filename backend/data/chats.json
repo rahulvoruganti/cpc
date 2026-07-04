@@ -46,16 +46,14 @@
         "text": "I prepared an editable proposal so you can review the defaults before provisioning.",
         "proposal": {
           "kind": "vm",
-          "templateId": "rhel",
-          "templateName": "RHEL",
+          "templateId": "alpine",
+          "templateName": "Alpine Linux",
           "hostname": "llm-inference-vm-01",
           "cpu": 8,
           "memoryGB": 32,
-          "diskGB": 250,
-          "additionalPackages": [],
+          "diskGB": 100,
           "packages": [
-            "python",
-            "nodejs"
+            "python"
           ]
         }
       }

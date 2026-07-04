@@ -2982,10 +2982,10 @@
         "autoApproved": true,
         "approvedBy": null
       },
-      "status": "provisioning",
-      "message": "Laying down the golden OS image…",
+      "status": "failed",
+      "message": "Interrupted",
       "resources": [],
-      "error": null,
+      "error": "Interrupted by a server restart before completion",
       "logs": [
         {
           "ts": "2026-07-04T06:17:48.186Z",
@@ -3036,10 +3036,16 @@
           "ts": "2026-07-04T06:17:48.484Z",
           "status": "provisioning",
           "message": "Laying down the golden OS image…"
+        },
+        {
+          "ts": "2026-07-04T06:19:42.432Z",
+          "status": "failed",
+          "message": "Interrupted by a server restart before completion",
+          "error": "Interrupted by a server restart before completion"
         }
       ],
       "createdAt": "2026-07-04T06:17:48.186Z",
-      "updatedAt": "2026-07-04T06:17:48.484Z",
+      "updatedAt": "2026-07-04T06:19:42.432Z",
       "steps": [
         {
           "key": "submitted",
