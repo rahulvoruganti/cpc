@@ -6,7 +6,6 @@ import ApiTokensPanel from "./ApiTokensPanel.jsx";
 import NotificationBell from "./NotificationBell.jsx";
 
 const THEMES = [
-  { id: "colruyt", label: "Colruyt" },
   { id: "slate", label: "Slate" },
   { id: "forest", label: "Forest" },
   { id: "sunrise", label: "Sunrise" },
@@ -18,7 +17,7 @@ function initials(name = "") {
 
 export default function TopNav() {
   const { user, signOut, patchPreferences, isAdmin } = useAuth();
-  const [theme, setTheme] = useState(() => user?.preferences?.theme || "colruyt");
+  const [theme, setTheme] = useState(() => user?.preferences?.theme || "slate");
   const [showBackground, setShowBackground] = useState(() => user?.preferences?.showBackground ?? true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState("root");
