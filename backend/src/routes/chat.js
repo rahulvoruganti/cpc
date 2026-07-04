@@ -2,7 +2,7 @@ import { Router } from "express";
 import { chatWithGemini } from "../services/geminiService.js";
 import { requireAuth } from "../middleware/auth.js";
 import { getChat, saveChat, clearChat } from "../services/chatStore.js";
-import { findVmTemplate, findContainerTemplate, findStack, PACKAGE_CATALOG } from "../config/catalog.js";
+import { findVmTemplate, findContainerTemplate, findStack } from "../config/catalog.js";
 import { logAudit } from "../services/auditService.js";
 import * as pve from "../services/proxmoxService.js";
 import { removeOwner, getOwner } from "../services/ownershipStore.js";
@@ -67,56 +67,6 @@ const WORKLOAD_PROFILES = [
     stack: { cpu: 4, memoryGB: 8, diskGB: 120 },
   },
 ];
-
-// Map free-text use cases to the packages a workload usually needs, so the
-// proposal arrives with the right boxes pre-checked (e.g. a React app -> nodejs,
-// yarn, nginx, git). Every package name here must exist in the frontend
-// PACKAGE_OPTIONS list so the checkbox can render it. Matches accumulate, so
-// "django app behind nginx with postgres" pulls packages from all three rules.
-const PACKAGE_PROFILES = [
-  { re: /\b(react|reactjs|vue|vuejs|angular|svelte|next\s?\.?\s?js|nextjs|nuxt|node\s?\.?\s?js|nodejs|express|frontend|front-end|spa|web\s?app|website|javascript|typescript|npm)\b/i, packages: ["nodejs", "yarn", "nginx", "git"] },
-  { re: /\b(python|django|flask|fastapi|pandas|numpy)\b/i, packages: ["python", "git"] },
-  { re: /\b(llm|large language model|ai model|inference|finetune|fine-tune|embedding|machine learning|\bml\b|pytorch|tensorflow)\b/i, packages: ["python", "docker", "git"] },
-  { re: /\b(java|spring|spring\s?boot)\b/i, packages: ["openjdk", "maven", "git"] },
-  { re: /(\.net|dotnet|c#|asp\.net)/i, packages: ["dotnet-sdk", "git"] },
-  { re: /\b(php|laravel|symfony|wordpress)\b/i, packages: ["php", "nginx", "git"] },
-  { re: /\b(go|golang)\b/i, packages: ["go", "git"] },
-  { re: /\b(postgres|postgresql)\b/i, packages: ["postgres"] },
-  { re: /\b(mysql|mariadb)\b/i, packages: ["mysql"] },
-  { re: /\b(mongo|mongodb)\b/i, packages: ["mongodb"] },
-  { re: /\b(redis|caching)\b/i, packages: ["redis"] },
-  { re: /\b(rabbitmq|message queue|amqp)\b/i, packages: ["rabbitmq"] },
-  { re: /\b(docker|dockeri[sz]ed|container|containers|containeri[sz]ed|microservices?|podman)\b/i, packages: ["docker", "docker-compose", "git"] },
-  { re: /\b(kubernetes|k8s|k3s|helm)\b/i, packages: ["kubectl", "helm", "docker"] },
-  { re: /\b(terraform|infrastructure as code|iac|ansible)\b/i, packages: ["terraform", "ansible", "git"] },
-  { re: /\b(grafana|prometheus|monitoring|observability|metrics)\b/i, packages: ["grafana", "prometheus"] },
-  { re: /\b(nginx|reverse proxy|load balancer|web server)\b/i, packages: ["nginx"] },
-  { re: /\b(aws|s3|ec2|cloud cli)\b/i, packages: ["awscli"] },
-];
-
-// Keyword fallback for when the model doesn't return packages. Kept only as a
-// safety net — the primary source is the model's own package selection, which
-// understands the full conversation.
-function inferPackages(message) {
-  const text = message || "";
-  const set = new Set();
-  for (const profile of PACKAGE_PROFILES) {
-    if (profile.re.test(text)) profile.packages.forEach((pkg) => set.add(pkg));
-  }
-  return Array.from(set);
-}
-
-// Final package list for a proposal: trust the model's selection (filtered to
-// the catalog), and only fall back to keyword inference if it returned nothing.
-function resolvePackages(resultArgs, message) {
-  const fromModel = Array.isArray(resultArgs?.packages)
-    ? resultArgs.packages
-        .map((pkg) => String(pkg).toLowerCase().trim())
-        .filter((pkg) => PACKAGE_CATALOG.includes(pkg))
-    : [];
-  const packages = fromModel.length ? fromModel : inferPackages(message);
-  return Array.from(new Set(packages));
-}
 
 function randomSuffix() {
   return Math.floor(1000 + Math.random() * 9000);
@@ -190,9 +140,8 @@ function applySmartDefaults(args = {}, message) {
   };
 }
 
-function buildProposal(resultArgs = {}, message = "") {
+function buildProposal(resultArgs = {}) {
   const kind = resultArgs.kind;
-  const packages = resolvePackages(resultArgs, message);
 
   if (kind === "stack") {
     const stack = findStack(resultArgs.stackId);
@@ -204,7 +153,6 @@ function buildProposal(resultArgs = {}, message = "") {
       cpu: resultArgs.cpu || DEFAULTS.cpu,
       memoryGB: resultArgs.memoryGB || DEFAULTS.memoryGB,
       diskGB: resultArgs.diskGB || DEFAULTS.diskGB,
-      packages,
     };
   }
 
@@ -217,7 +165,6 @@ function buildProposal(resultArgs = {}, message = "") {
       hostname: resultArgs.hostname || `${resultArgs.templateId || "container"}-ct-${randomSuffix()}`,
       cpu: resultArgs.cpu || DEFAULTS.cpu,
       memoryGB: resultArgs.memoryGB || DEFAULTS.memoryGB,
-      packages,
     };
   }
 
@@ -230,7 +177,6 @@ function buildProposal(resultArgs = {}, message = "") {
     cpu: resultArgs.cpu || DEFAULTS.cpu,
     memoryGB: resultArgs.memoryGB || DEFAULTS.memoryGB,
     diskGB: resultArgs.diskGB || DEFAULTS.diskGB,
-    packages,
   };
 }
 
@@ -244,9 +190,8 @@ function proposalReply(proposal) {
   return `I prepared an editable proposal for the ${proposal.templateName} VM.`;
 }
 
-function buildProvisionPayload(resultArgs = {}, message = "") {
+function buildProvisionPayload(resultArgs = {}) {
   const kind = resultArgs.kind;
-  const packages = resolvePackages(resultArgs, message);
 
   if (kind === "stack") {
     return {
@@ -256,7 +201,6 @@ function buildProvisionPayload(resultArgs = {}, message = "") {
       cpu: resultArgs.cpu || DEFAULTS.cpu,
       memoryGB: resultArgs.memoryGB || DEFAULTS.memoryGB,
       diskGB: resultArgs.diskGB || DEFAULTS.diskGB,
-      packages,
     };
   }
 
@@ -267,7 +211,6 @@ function buildProvisionPayload(resultArgs = {}, message = "") {
       hostname: resultArgs.hostname || `${resultArgs.templateId || "container"}-ct-${randomSuffix()}`,
       cpu: resultArgs.cpu || DEFAULTS.cpu,
       memoryGB: resultArgs.memoryGB || DEFAULTS.memoryGB,
-      packages,
     };
   }
 
@@ -278,7 +221,6 @@ function buildProvisionPayload(resultArgs = {}, message = "") {
     cpu: resultArgs.cpu || DEFAULTS.cpu,
     memoryGB: resultArgs.memoryGB || DEFAULTS.memoryGB,
     diskGB: resultArgs.diskGB || DEFAULTS.diskGB,
-    packages,
   };
 }
 
@@ -350,6 +292,12 @@ function resolveResourceTarget(resources, args = {}) {
   return candidates;
 }
 
+function formatResourceList(resources) {
+  return resources
+    .map((r) => `- ${r.name || "(no-name)"} [${r.type}] VMID ${r.vmid} (${r.status || "unknown"})`)
+    .join("\n");
+}
+
 router.post("/chat", async (req, res) => {
   const { message, history } = req.body;
   if (!message || typeof message !== "string") {
@@ -385,12 +333,12 @@ router.post("/chat", async (req, res) => {
             reply: sizedArgs.kind === "container"
               ? "You asked for a container, but no container templates are configured yet. I prepared a container proposal so you can review it after templates are added."
               : `I could not find the selected ${sizedArgs.kind === "stack" ? "stack" : "template"} in the catalog.`,
-            proposal: buildProposal(sizedArgs, message),
+            proposal: buildProposal(sizedArgs),
             job: null,
           });
         }
 
-        const payload = buildProvisionPayload(sizedArgs, message);
+        const payload = buildProvisionPayload(sizedArgs);
         const result = startProvisioning(sizedArgs.kind, payload, req.user.username);
         if (!result.job) {
           return res.json({
@@ -410,7 +358,7 @@ router.post("/chat", async (req, res) => {
         });
       }
 
-      const proposal = buildProposal(sizedArgs, message);
+      const proposal = buildProposal(sizedArgs);
       return res.json({
         reply: explicitDetails ? proposalReply(proposal) : "I prepared an editable proposal so you can review the defaults before provisioning.",
         proposal,
@@ -433,8 +381,7 @@ router.post("/chat", async (req, res) => {
           });
         }
         return res.json({
-          reply: "Here are your assigned resources:",
-          resourceList: filtered,
+          reply: `Here are your assigned resources:\n${formatResourceList(filtered)}`,
           job: null,
         });
       }
@@ -450,8 +397,7 @@ router.post("/chat", async (req, res) => {
 
         if (candidates.length > 1) {
           return res.json({
-            reply: "I found multiple matching resources. Please specify a VMID:",
-            resourceList: candidates.slice(0, 10),
+            reply: `I found multiple matching resources. Please specify VMID.\n${formatResourceList(candidates.slice(0, 10))}`,
             job: null,
           });
         }
@@ -477,8 +423,7 @@ router.post("/chat", async (req, res) => {
 
       if (candidates.length > 1) {
         return res.json({
-          reply: "I found multiple matching resources. Please specify a VMID:",
-          resourceList: candidates.slice(0, 10),
+          reply: `I found multiple matching resources. Please specify VMID.\n${formatResourceList(candidates.slice(0, 10))}`,
           job: null,
         });
       }

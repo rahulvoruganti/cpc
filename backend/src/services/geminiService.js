@@ -1,5 +1,5 @@
 import axios from "axios";
-import { VM_TEMPLATES, CONTAINER_TEMPLATES, STACKS, PACKAGE_CATALOG } from "../config/catalog.js";
+import { VM_TEMPLATES, CONTAINER_TEMPLATES, STACKS } from "../config/catalog.js";
 
 const { GEMINI_API_KEY, GEMINI_MODEL = "gemini-2.5-flash" } = process.env;
 
@@ -21,11 +21,6 @@ const FUNCTION_DECLARATIONS = [
         cpu: { type: "NUMBER", description: "Number of CPU cores." },
         memoryGB: { type: "NUMBER", description: "Memory in GB." },
         diskGB: { type: "NUMBER", description: "Disk size in GB." },
-        packages: {
-          type: "ARRAY",
-          items: { type: "STRING" },
-          description: "Software packages to pre-install, chosen from the allowed package list to fit the user's use case.",
-        },
       },
       required: ["action", "kind"],
     },
@@ -52,7 +47,6 @@ function buildSystemInstruction() {
     ? CONTAINER_TEMPLATES.map((t) => `  - id: "${t.id}", name: "${t.name}"`).join("\n")
     : "  (none configured yet)";
   const stackList = STACKS.map((s) => `  - id: "${s.id}", name: "${s.name}" — ${s.description}`).join("\n");
-  const packageList = PACKAGE_CATALOG.join(", ");
 
   return `You are the provisioning assistant for an internal self-service cloud portal backed by Proxmox.
 Users describe infrastructure they want in free text. Your job is to call exactly one of the
@@ -67,26 +61,16 @@ ${containerList}
 Available stacks:
 ${stackList}
 
-Allowed packages (choose only from this list):
-${packageList}
-
 Rules:
 - Map natural-language OS names to the correct templateId. "redhat", "rhel", "red hat" -> "rhel". "alpine", "linux" (generic) -> "alpine".
 - If the user doesn't specify cpu, memoryGB, or diskGB, choose sensible defaults based on workload intent. Use larger defaults for heavier workloads (e.g., LLM/AI, stress/performance testing, databases) and smaller defaults for lightweight generic requests.
 - If the user doesn't give a hostname, invent a short reasonable one based on the template, e.g. "rhel-vm-01".
-- Always populate the "packages" field by understanding the workload/use case from the whole conversation, choosing only from the allowed package list. Examples: a Next.js / React / Node / frontend app -> ["nodejs", "yarn", "nginx", "git"]; a VM to host containers / Docker / microservices -> ["docker", "docker-compose", "git"]; a Kubernetes node -> ["kubectl", "helm", "docker"]; a Python/Django/Flask/ML app -> ["python", "git"]; a Java/Spring app -> ["openjdk", "maven", "git"]; a .NET app -> ["dotnet-sdk", "git"]; a PHP/Laravel app -> ["php", "nginx", "git"]; a Go app -> ["go", "git"]; databases -> the matching one of ["postgres", "mysql", "mongodb", "redis"]. Pick the packages that genuinely fit what the user described rather than a fixed default.
 - Choose the best-fit kind yourself: use stack for multi-component requests, container only when the user explicitly asks for container or lxc, and otherwise prefer vm.
 - If the user explicitly asks for container/lxc/vm/stack, preserve that requested kind in the function args.
 - If the request is ambiguous about which template (e.g. unknown OS), pick the closest available template rather than refusing.
 - If the request is complete and unambiguous, set action to provision and include all needed fields so the backend can provision immediately.
-- Before proposing, judge whether you can size the resource sensibly from what the user said. Many workloads have a well-understood footprint (e.g. a React/Node or other web app, a small API, a static site, LLM inference) — for these, set action=propose with sensible defaults and let the user adjust.
-- If instead the workload's resource needs depend heavily on details the user has NOT given, do NOT call any function yet. Reply in plain text with 1-2 short, specific clarifying questions, then wait for the answer. Examples of requests that need clarification first:
-    * "VM to run a stress/load test" -> ask the expected load (e.g. how many concurrent users or target requests per second) and roughly how long the test runs.
-    * "a database server" -> ask which engine and roughly how much data or how many concurrent connections.
-    * "a data processing / ETL / batch job" -> ask the data volume and whether it is CPU- or memory-heavy.
-    * "a build or CI server" -> ask how many parallel jobs or builds it should handle.
-  Keep it to 1-2 concrete questions and suggest example answers to make it easy. Once the user gives enough detail (even approximate), proceed with action=propose (or action=provision if everything needed is specified).
-- If the user says to just pick something, says "you decide", or declines to give more detail, stop asking and use action=propose with sensible defaults.
+- If the request is missing important details or likely benefits from review, set action to propose and include the editable resource fields so the user can adjust them.
+- If the user only describes the use case or workload and does not give explicit resource details, prefer action=propose.
 - Do not include any rationale or explanation field in the function call.
 - If the message is not a provisioning request at all (e.g. small talk, a question about the portal), do not call any function — just reply normally in plain text.
 - If the user asks to list resources assigned to them (e.g. "my VMs", "what is assigned to me"), call manage_resources with action=list_owned.
