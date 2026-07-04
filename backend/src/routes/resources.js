@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as pve from "../services/proxmoxService.js";
 import { logAudit } from "../services/auditService.js";
 import { requireAuth } from "../middleware/auth.js";
-import { getOwner, removeOwner, allOwners } from "../services/ownershipStore.js";
+import { getOwner, removeOwner, allOwners, setOwnerIp } from "../services/ownershipStore.js";
 import { getExpiry, extendExpiry, removeExpiry } from "../services/expiryStore.js";
 import { canSeeTags } from "../services/visibility.js";
 import { parseTags } from "../services/tags.js";
@@ -64,6 +64,25 @@ async function enrichOs(items) {
       const os = prettyOs(ostype, r.type);
       osCache.set(r.vmid, os);
       r.os = os;
+    })
+  );
+}
+
+// The Connect button and terminal need a VM's IP. It's recorded at provision
+// time, but VMs created outside the provisioner (or ones whose guest agent
+// hadn't reported an address yet) have no stored IP. For running VMs missing an
+// IP, do a live guest-agent lookup and persist it so the Resources list shows
+// the Connect action and the terminal route resolves the host without a second
+// lookup. Only VMs are probed — the guest-agent endpoint is qemu-specific.
+async function enrichIps(items) {
+  await Promise.all(
+    items.map(async (r) => {
+      if (r.ip || r.type !== "vm" || r.status !== "running") return;
+      const ip = await pve.getGuestAgentIp({ vmid: r.vmid }).catch(() => null);
+      if (ip) {
+        r.ip = ip;
+        setOwnerIp(r.vmid, ip);
+      }
     })
   );
 }
@@ -158,7 +177,7 @@ router.get("/resources", async (req, res) => {
     // Only resolve OS for resources the caller can actually see, so non-admins
     // don't trigger config reads across the whole node.
     const visible = filterByVisibility(combined, req.user);
-    await enrichOs(visible);
+    await Promise.all([enrichOs(visible), enrichIps(visible)]);
     res.json(visible);
   } catch (err) {
     res.status(502).json({ error: err.message });

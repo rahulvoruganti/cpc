@@ -8,8 +8,9 @@ import FailureNotifier from "./components/FailureNotifier.jsx";
 import Login from "./pages/Login.jsx";
 import EntraCallback from "./pages/EntraCallback.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import Provision from "./pages/Provision.jsx";
+import ProvisionHub from "./pages/ProvisionHub.jsx";
 import Resources from "./pages/Resources.jsx";
+import Deployments from "./pages/Deployments.jsx";
 import Admin from "./pages/Admin.jsx";
 import Audit from "./pages/Audit.jsx";
 import Requests from "./pages/Requests.jsx";
@@ -36,8 +37,11 @@ export default function App() {
           <Route path="/auth/entra/callback" element={<EntraCallback />} />
 
           <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-          <Route path="/provision" element={<ProtectedRoute><Provision /></ProtectedRoute>} />
+          <Route path="/provision" element={<ProtectedRoute><ProvisionHub /></ProtectedRoute>} />
           <Route path="/resources" element={<ProtectedRoute><Resources /></ProtectedRoute>} />
+          {/* Container hosting now lives as a sub-tab under /provision */}
+          <Route path="/containers" element={<Navigate to="/provision?tab=containers" replace />} />
+          <Route path="/deployments" element={<ProtectedRoute><Deployments /></ProtectedRoute>} />
           <Route path="/requests" element={<ProtectedRoute><Requests /></ProtectedRoute>} />
           <Route path="/admin" element={<ProtectedRoute adminOnly><Admin /></ProtectedRoute>} />
           <Route path="/audit" element={<ProtectedRoute adminOnly><Audit /></ProtectedRoute>} />

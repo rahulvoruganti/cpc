@@ -843,6 +843,117 @@
       "jobId": "iU3yCg3_qp",
       "createdAt": "2026-07-04T06:17:48.169Z",
       "updatedAt": "2026-07-04T06:17:48.365Z"
+    },
+    {
+      "id": "G-0Mcz4RXNJe",
+      "kind": "vm",
+      "payload": {
+        "templateId": "tpl-100",
+        "hostname": "monitor",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "username": "test",
+        "sudoAccess": false,
+        "environment": "vmbr190"
+      },
+      "requestedBy": "admin",
+      "source": "portal",
+      "status": "provisioning",
+      "requiresApproval": false,
+      "policy": {
+        "cpu": 2,
+        "memoryGB": 4,
+        "diskGB": 50
+      },
+      "approvedBy": null,
+      "approvedAt": null,
+      "rejectedBy": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "jobId": "F_q-D0eJZF",
+      "createdAt": "2026-07-04T06:31:05.041Z",
+      "updatedAt": "2026-07-04T06:31:05.223Z"
+    },
+    {
+      "id": "nee5DKJP7M76",
+      "kind": "vm",
+      "payload": {
+        "templateId": "tpl-100",
+        "hostname": "test",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "username": "test",
+        "sudoAccess": false,
+        "environment": "vmbr190"
+      },
+      "requestedBy": "admin",
+      "source": "portal",
+      "status": "provisioning",
+      "requiresApproval": false,
+      "policy": {
+        "cpu": 2,
+        "memoryGB": 4,
+        "diskGB": 50
+      },
+      "approvedBy": null,
+      "approvedAt": null,
+      "rejectedBy": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "jobId": "L_tP5FrbMH",
+      "createdAt": "2026-07-04T06:42:28.738Z",
+      "updatedAt": "2026-07-04T06:42:28.916Z"
+    },
+    {
+      "id": "gsUbHRJQEuzE",
+      "kind": "vm",
+      "payload": {
+        "templateId": "tpl-100",
+        "hostname": "testinggggggggg",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "username": "test",
+        "sudoAccess": false,
+        "environment": "vmbr0"
+      },
+      "requestedBy": "admin",
+      "source": "portal",
+      "status": "provisioning",
+      "requiresApproval": false,
+      "policy": {
+        "cpu": 2,
+        "memoryGB": 4,
+        "diskGB": 50
+      },
+      "approvedBy": null,
+      "approvedAt": null,
+      "rejectedBy": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "jobId": "eUoDG2T1MR",
+      "createdAt": "2026-07-04T06:58:14.878Z",
+      "updatedAt": "2026-07-04T06:58:15.086Z"
     }
   ]
 }

@@ -147,7 +147,6 @@ function JobRow({ job, expanded, onToggle, onSummary }) {
 
 export default function LogPanel() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState("normal");    // "normal" | "min" | "max"
   const [jobs, setJobs] = useState([]);
   const [error, setError] = useState("");
   const [openCat, setOpenCat] = useState(null);  // expanded category key
@@ -173,6 +172,21 @@ export default function LogPanel() {
     return () => { cancelled = true; clearTimeout(timer); };
   }, []);
 
+  // A deployment was just created elsewhere (Provision page / chat) — pop the
+  // panel open, maximized, on the live "current" view and refresh right away so
+  // the new job shows without waiting for the next poll.
+  useEffect(() => {
+    const onOpen = () => {
+      setOpen(true);
+      setRunningOnly(false);
+      setOpenCat(null);
+      setOpenJob(null);
+      getJobs().then((d) => setJobs(Array.isArray(d) ? d : [])).catch(() => {});
+    };
+    window.addEventListener("cpc:open-deployment-monitor", onOpen);
+    return () => window.removeEventListener("cpc:open-deployment-monitor", onOpen);
+  }, []);
+
   // jobs come newest-first from the API.
   const runningJobs = jobs.filter((j) => j.category === "running");
   const current = runningJobs[0] || jobs[0] || null;
@@ -183,22 +197,24 @@ export default function LogPanel() {
     return (
       <button
         className="log-launcher"
-        onClick={() => { setOpen(true); setMode("normal"); }}
+        onClick={() => setOpen(true)}
         aria-label="Open deployment monitor"
-        title="Deployment monitor"
+        title={runningJobs.length > 0 ? `${runningJobs.length} running deployment(s)` : "Deployment monitor"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M4 6h16M4 12h10M4 18h7" />
           <path d="M15.5 17l2 2 3.5-4" />
         </svg>
-        {runningJobs.length > 0 && <span className="log-launcher-live" aria-hidden="true" />}
+        {runningJobs.length > 0 && (
+          <span className="log-launcher-count" aria-hidden="true">{runningJobs.length > 9 ? "9+" : runningJobs.length}</span>
+        )}
       </button>
     );
   }
 
   return (
-    <div className={`logpanel logpanel-${mode}`}>
+    <div className="logpanel logpanel-normal">
       <div className="logpanel-header">
         <span className="logpanel-title">
           <span className="logpanel-title-dot" />
@@ -215,15 +231,11 @@ export default function LogPanel() {
           )}
         </span>
         <div className="logpanel-controls">
-          <button className="logpanel-btn" onClick={() => setMode((m) => (m === "min" ? "normal" : "min"))}
-            title={mode === "min" ? "Restore" : "Minimize"} aria-label="Minimize">{mode === "min" ? "▢" : "—"}</button>
-          <button className="logpanel-btn" onClick={() => setMode((m) => (m === "max" ? "normal" : "max"))}
-            title={mode === "max" ? "Restore" : "Maximize"} aria-label="Maximize">{mode === "max" ? "❐" : "▣"}</button>
-          <button className="logpanel-btn" onClick={() => setOpen(false)} title="Close" aria-label="Close">×</button>
+          <button className="logpanel-btn" onClick={() => setOpen(false)} title="Minimize" aria-label="Minimize to bubble">—</button>
         </div>
       </div>
 
-      {mode !== "min" && (
+      {(
         <div className="logpanel-body">
           {error && <div className="log-error">{error}</div>}
           {!error && jobs.length === 0 && (

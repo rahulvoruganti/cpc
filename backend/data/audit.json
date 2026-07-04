@@ -3104,6 +3104,226 @@
         "jobId": "iU3yCg3_qp",
         "status": "provisioning"
       }
+    },
+    {
+      "id": "FntjeZ4GML",
+      "timestamp": "2026-07-04T06:31:05.230Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "vm.request",
+      "target": "monitor",
+      "status": "success",
+      "detail": {
+        "templateId": "tpl-100",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "requestId": "G-0Mcz4RXNJe",
+        "jobId": "F_q-D0eJZF",
+        "status": "provisioning"
+      }
+    },
+    {
+      "id": "vV7EyNBB7F",
+      "timestamp": "2026-07-04T06:42:28.921Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "vm.request",
+      "target": "test",
+      "status": "success",
+      "detail": {
+        "templateId": "tpl-100",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "requestId": "nee5DKJP7M76",
+        "jobId": "L_tP5FrbMH",
+        "status": "provisioning"
+      }
+    },
+    {
+      "id": "F_d6FD5tba",
+      "timestamp": "2026-07-04T06:46:54.903Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "mapping.template.save",
+      "target": "VMID 115",
+      "status": "success",
+      "detail": {
+        "osName": "MERN Stack"
+      }
+    },
+    {
+      "id": "Y1Ww4XJMMV",
+      "timestamp": "2026-07-04T06:47:27.524Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "mapping.template.save",
+      "target": "VMID 114",
+      "status": "success",
+      "detail": {
+        "osName": "LAMP Stack"
+      }
+    },
+    {
+      "id": "-DxPXfkHxW",
+      "timestamp": "2026-07-04T06:47:48.063Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "mapping.template.save",
+      "target": "VMID 116",
+      "status": "success",
+      "detail": {
+        "osName": "MEAN Stack"
+      }
+    },
+    {
+      "id": "TM6JpiTC7i",
+      "timestamp": "2026-07-04T06:51:09.187Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "settings.update",
+      "target": "system settings",
+      "status": "success",
+      "detail": {
+        "keys": [
+          "PROXMOX_HOST",
+          "PROXMOX_PORT",
+          "PROXMOX_NODE",
+          "PROXMOX_USERNAME",
+          "PROXMOX_PASSWORD",
+          "PROXMOX_VERIFY_SSL",
+          "K3S_API_URL",
+          "K3S_API_TOKEN",
+          "K3S_VERIFY_TLS",
+          "VM_SSH_PASSWORD",
+          "SNIPPET_STORAGE",
+          "INTERNAL_LINUX_URL",
+          "INTERNAL_LINUX_TOKEN",
+          "INTERNAL_NETWORK_URL",
+          "INTERNAL_NETWORK_TOKEN",
+          "INTERNAL_COMPUTE_URL",
+          "INTERNAL_COMPUTE_TOKEN",
+          "INTERNAL_LINUX_ANSIBLE_URL",
+          "INTERNAL_LINUX_ANSIBLE_TOKEN",
+          "INTERNAL_SERVICENOW_ANSIBLE_URL",
+          "INTERNAL_SERVICENOW_ANSIBLE_TOKEN",
+          "INTERNAL_VERIFY_TLS",
+          "INTERNAL_HTTP_TIMEOUT_MS",
+          "GEMINI_API_KEY",
+          "GEMINI_MODEL",
+          "AUTO_APPROVE_DEPLOYMENTS",
+          "APPROVAL_CPU_THRESHOLD",
+          "APPROVAL_MEMORY_GB_THRESHOLD",
+          "APPROVAL_DISK_GB_THRESHOLD",
+          "ENTRA_TENANT_ID",
+          "ENTRA_CLIENT_ID",
+          "ENTRA_CLIENT_SECRET",
+          "ENTRA_REDIRECT_URI"
+        ]
+      }
+    },
+    {
+      "id": "aW-kViM3zY",
+      "timestamp": "2026-07-04T06:51:40.874Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "k8s.namespace.create",
+      "target": "nsfromapp",
+      "status": "success",
+      "detail": {
+        "team": "",
+        "env": "test",
+        "project": ""
+      }
+    },
+    {
+      "id": "tAeFj2o81T",
+      "timestamp": "2026-07-04T06:54:13.814Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "auth.login",
+      "target": "",
+      "status": "success",
+      "detail": {
+        "method": "local"
+      }
+    },
+    {
+      "id": "0x1BppO6tD",
+      "timestamp": "2026-07-04T06:54:56.357Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "k8s.namespace.delete",
+      "target": "nsfromapp",
+      "status": "success",
+      "detail": {}
+    },
+    {
+      "id": "0MsJc5LX2A",
+      "timestamp": "2026-07-04T06:58:15.091Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "vm.request",
+      "target": "testinggggggggg",
+      "status": "success",
+      "detail": {
+        "templateId": "tpl-100",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "requestId": "gsUbHRJQEuzE",
+        "jobId": "eUoDG2T1MR",
+        "status": "provisioning"
+      }
     }
   ]
 }
