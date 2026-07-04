@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login, getEntraStatus, getEntraLoginUrl } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import Logo from "../components/Logo.jsx";
 
 export default function Login() {
   const [method, setMethod] = useState(null); // null | "local" | "sso"
@@ -50,7 +51,7 @@ export default function Login() {
     <div className="login-wrap">
       <aside className="login-aside">
         <div className="brand-lg">
-          <span className="topnav-mark">CPC</span>
+          <Logo size={40} />
           Colruyt Private Cloud
         </div>
         <div className="pitch">

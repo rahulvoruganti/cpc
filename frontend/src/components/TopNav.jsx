@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { getMyPreferences, updateMyPreferences } from "../api/client.js";
 import ApiTokensPanel from "./ApiTokensPanel.jsx";
 import NotificationBell from "./NotificationBell.jsx";
+import Logo from "./Logo.jsx";
 
 const THEMES = [
   { id: "colruyt", label: "Colruyt" },
@@ -98,7 +99,7 @@ export default function TopNav() {
   return (
     <nav className="topnav">
       <div className="topnav-brand">
-        <span className="topnav-mark">CPC</span>
+        <Logo size={28} className="topnav-logo" />
         Colruyt Private Cloud
       </div>
 

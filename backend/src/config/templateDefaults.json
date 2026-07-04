@@ -10,5 +10,11 @@
     { "letter": "E", "name": "Express.js" },
     { "letter": "R", "name": "React" },
     { "letter": "N", "name": "Node.js" }
+  ],
+  "LAMP": [
+    { "letter": "L", "name": "Linux" },
+    { "letter": "A", "name": "Apache" },
+    { "letter": "M", "name": "MySQL" },
+    { "letter": "P", "name": "PHP" }
   ]
 }

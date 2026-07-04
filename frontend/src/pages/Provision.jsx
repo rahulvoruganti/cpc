@@ -1,10 +1,11 @@
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   getVmTemplates, getContainerTemplates, getStacks, getEnvironments, getTemplateDefaults,
   getCostRates, provisionVm, provisionInternal, provisionContainer, provisionStack,
   getIacTemplate,
 } from "../api/client.js";
 import { useDialog } from "../components/DialogProvider.jsx";
+import { IconDownload } from "../components/icons.jsx";
 
 const IAC_TOOL_OPTIONS = [
   { id: "terraform", label: "Terraform" },
@@ -48,8 +49,15 @@ function IacExport({ kind, id }) {
       <select className="control-select iac-export-select" value={tool} onChange={(e) => setTool(e.target.value)} aria-label="IaC tool">
         {IAC_TOOL_OPTIONS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
       </select>
-      <button type="button" className="btn btn-ghost btn-sm" onClick={download} disabled={busy}>
-        {busy ? "Preparing…" : "Download"}
+      <button
+        type="button"
+        className="icon-btn iac-export-download"
+        onClick={download}
+        disabled={busy}
+        title="Download IaC file"
+        aria-label="Download IaC file"
+      >
+        {busy ? <span className="spinner" style={{ width: 14, height: 14 }} /> : <IconDownload />}
       </button>
     </div>
   );
@@ -114,7 +122,7 @@ const CATEGORY_META = {
   vm: { label: "Virtual machines", icon: "🖥" },
   container: { label: "Containers", icon: "📦" },
 };
-const CATEGORY_ORDER = ["stack", "vm", "container"];
+const CATEGORY_ORDER = ["stack", "vm"];
 
 function categoryOf(row) {
   if (row.kind === "stack") return "stack";
@@ -498,12 +506,12 @@ export default function Provision({ embedded = false }) {
     getCostRates().then(setCostRates).catch(() => {});
   }, []);
 
+  // This page covers VMs & stacks only — containers have their own hosting page.
   const rows = useMemo(() => {
     const vmRows = vmTemplates.map((item) => ({ kind: "vm", item }));
-    const containerRows = containerTemplates.map((item) => ({ kind: "container", item }));
     const stackRows = stacks.map((item) => ({ kind: "stack", item }));
-    return [...vmRows, ...containerRows, ...stackRows];
-  }, [vmTemplates, containerTemplates, stacks]);
+    return [...vmRows, ...stackRows];
+  }, [vmTemplates, stacks]);
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -625,126 +633,98 @@ export default function Provision({ embedded = false }) {
       <div className="page-head">
         <div className="eyebrow">Catalog</div>
         <h1>Virtual machines &amp; stacks</h1>
-        <p>Search and select from catalog entries, then configure and launch from the side panel.</p>
+        <p>Pick a template to configure and launch — or download an IaC file to provision it from your own tool.</p>
       </div>
 
-      <div className="summary-strip" style={{ marginBottom: 16 }} role="group" aria-label="Filter catalog by category">
-        <button
-          type="button"
-          className={`summary-chip ${kindFilter === "all" ? "summary-chip-active" : ""}`}
-          aria-pressed={kindFilter === "all"}
-          onClick={() => setKindFilter("all")}
-        ><span className="icon">⚙</span> {rows.length} all</button>
-        {CATEGORY_ORDER.map((cat) => (
+      <div className="tpl-toolbar toolbar-panel">
+        <input
+          className="control-input tpl-search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search by name, id, or description…"
+          aria-label="Search catalog"
+        />
+        <div className="tpl-filters" role="group" aria-label="Filter by category">
           <button
-            key={cat}
             type="button"
-            className={`summary-chip ${kindFilter === cat ? "summary-chip-active" : ""}`}
-            aria-pressed={kindFilter === cat}
-            onClick={() => setKindFilter((cur) => (cur === cat ? "all" : cat))}
-          ><span className="icon">{CATEGORY_META[cat].icon}</span> {categoryCounts[cat]} {CATEGORY_META[cat].label.toLowerCase()}</button>
-        ))}
-      </div>
-
-      <div className="provision-workbench">
-        <div className="card card-pad provision-catalog-panel">
-          <div className="toolbar toolbar-panel" style={{ marginBottom: 12 }}>
-            <input
-              className="control-input"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search by name, id, or description..."
-              aria-label="Search catalog"
-            />
-            <span className="muted" style={{ marginLeft: "auto", fontSize: 13 }}>{filteredRows.length} results</span>
-          </div>
-
-          <div className="provision-table-wrap">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Kind</th>
-                  <th>ID</th>
-                  <th>Meta</th>
-                </tr>
-              </thead>
-              <tbody>
-                {groupedRows.map(({ category, rows: catRows }) => (
-                  <Fragment key={category}>
-                    <tr className="provision-group-row">
-                      <th colSpan={4} scope="colgroup">
-                        <span className="provision-group-icon" aria-hidden="true">{CATEGORY_META[category].icon}</span>
-                        {CATEGORY_META[category].label}
-                        <span className="provision-group-count">{catRows.length}</span>
-                      </th>
-                    </tr>
-                    {catRows.map((row) => {
-                      const isSelected = selected && selected.kind === row.kind && selected.item.id === row.item.id;
-                      const nameKey = (row.item.name || "").trim().toLowerCase();
-                      const kinds = nameKey ? Array.from(kindsByName.get(nameKey) || []) : [row.kind];
-                      return (
-                        <tr
-                          key={`${row.kind}:${row.item.id}`}
-                          className={isSelected ? "provision-row-selected" : ""}
-                          onClick={() => setSelected(row)}
-                          tabIndex={0}
-                          role="button"
-                          aria-label={`Configure ${row.item.name}`}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(row); }
-                          }}
-                        >
-                          <td>
-                            <div className="provision-row-title">
-                              {row.item.name}
-                              {row.item.provider === "internal" && (
-                                <span className="provision-inline-kind" style={{ marginLeft: 8 }}>Internal workflow</span>
-                              )}
-                            </div>
-                            {kinds.length > 1 && (
-                              <div className="provision-name-kinds">
-                                {kinds.map((k) => (
-                                  <span key={k} className="provision-inline-kind">{KIND_LABELS[k]}</span>
-                                ))}
-                              </div>
-                            )}
-                            {!!row.item.description && <div className="muted provision-row-sub">{row.item.description}</div>}
-                            {(() => {
-                              const defs = defaultPackagesFor(row.item, templateDefaults);
-                              if (!defs.length) return null;
-                              return (
-                                <div className="provision-row-defaults">
-                                  <span className="provision-row-defaults-label">Includes by default:</span>
-                                  {defs.map((p, i) => (
-                                    <span key={`${pkgName(p)}-${i}`} className="provision-inline-kind provision-inline-kind-fixed">{pkgName(p)}</span>
-                                  ))}
-                                </div>
-                              );
-                            })()}
-                            <IacExport kind={row.kind} id={row.item.id} />
-                          </td>
-                          <td><span className="badge provision-kind-badge">{KIND_LABELS[row.kind]}</span></td>
-                          <td className="mono">{row.item.id}</td>
-                          <td className="mono">{row.item.vmid ? `VMID ${row.item.vmid}` : "-"}</td>
-                        </tr>
-                      );
-                    })}
-                  </Fragment>
-                ))}
-
-                {groupedRows.length === 0 && (
-                  <tr>
-                    <td colSpan={4} className="muted" style={{ textAlign: "center", padding: 22 }}>
-                      No catalog entries match your filters.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+            className={`tpl-filter ${kindFilter === "all" ? "active" : ""}`}
+            aria-pressed={kindFilter === "all"}
+            onClick={() => setKindFilter("all")}
+          >All <span className="tpl-filter-n">{rows.length}</span></button>
+          {CATEGORY_ORDER.map((cat) => (
+            <button
+              key={cat}
+              type="button"
+              className={`tpl-filter ${kindFilter === cat ? "active" : ""}`}
+              aria-pressed={kindFilter === cat}
+              onClick={() => setKindFilter((cur) => (cur === cat ? "all" : cat))}
+            ><span aria-hidden="true">{CATEGORY_META[cat].icon}</span> {CATEGORY_META[cat].label} <span className="tpl-filter-n">{categoryCounts[cat]}</span></button>
+          ))}
         </div>
       </div>
+
+      {groupedRows.length === 0 ? (
+        <div className="empty">No catalog entries match your filters.</div>
+      ) : (
+        groupedRows.map(({ category, rows: catRows }) => (
+          <section key={category} className="tpl-section">
+            <div className="tpl-section-head">
+              <span className="tpl-section-icon" aria-hidden="true">{CATEGORY_META[category].icon}</span>
+              <h2 className="tpl-section-title">{CATEGORY_META[category].label}</h2>
+              <span className="tpl-section-count">{catRows.length}</span>
+            </div>
+
+            <div className="tpl-grid">
+              {catRows.map((row) => {
+                const isSelected = selected && selected.kind === row.kind && selected.item.id === row.item.id;
+                const defs = defaultPackagesFor(row.item, templateDefaults);
+                return (
+                  <div
+                    key={`${row.kind}:${row.item.id}`}
+                    className={`tpl-card ${isSelected ? "tpl-card-active" : ""}`}
+                    onClick={() => setSelected(row)}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Configure ${row.item.name}`}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(row); } }}
+                  >
+                    <div className="tpl-card-head">
+                      <span className="tpl-card-icon" aria-hidden="true">{CATEGORY_META[category].icon}</span>
+                      <div className="tpl-card-titles">
+                        <div className="tpl-card-name">{row.item.name}</div>
+                        <div className="tpl-card-tags">
+                          <span className="badge provision-kind-badge">{KIND_LABELS[row.kind]}</span>
+                          {row.item.provider === "internal" && <span className="provision-inline-kind">Internal workflow</span>}
+                        </div>
+                      </div>
+                    </div>
+
+                    {!!row.item.description && <p className="tpl-card-desc">{row.item.description}</p>}
+
+                    {defs.length > 0 && (
+                      <div className="tpl-card-defaults">
+                        <span className="provision-row-defaults-label">Includes by default</span>
+                        <div className="tpl-card-chips">
+                          {defs.map((p, i) => (
+                            <span key={`${pkgName(p)}-${i}`} className="provision-inline-kind provision-inline-kind-fixed">{pkgName(p)}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="tpl-card-foot" onClick={(e) => e.stopPropagation()}>
+                      <IacExport kind={row.kind} id={row.item.id} />
+                      <button type="button" className="btn btn-primary btn-sm tpl-card-cta" onClick={() => setSelected(row)}>
+                        Provision
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))
+      )}
 
       {selected && (
         <div className="provision-modal-backdrop">
