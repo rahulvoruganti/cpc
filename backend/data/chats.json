@@ -39,7 +39,27 @@
       },
       {
         "role": "user",
-        "text": "Propose a VM for LLM inference"
+        "text": "I want a container for stress test"
+      },
+      {
+        "role": "assistant",
+        "text": "A container for a stress test – how many concurrent users or requests per second do you anticipate, and for approximately how long will the test run?",
+        "proposal": null,
+        "resourceList": null
+      },
+      {
+        "role": "user",
+        "text": "100 users and 1 hour"
+      },
+      {
+        "role": "assistant",
+        "text": "I apologize, but there are no container templates configured at the moment. Would you like to provision a VM instead?",
+        "proposal": null,
+        "resourceList": null
+      },
+      {
+        "role": "user",
+        "text": "ok"
       },
       {
         "role": "assistant",
@@ -48,18 +68,21 @@
           "kind": "vm",
           "templateId": "alpine",
           "templateName": "Alpine Linux",
-          "hostname": "llm-inference-vm-01",
-          "cpu": 8,
-          "memoryGB": 32,
-          "diskGB": 100,
+          "hostname": "alpine-stress-01",
+          "cpu": 4,
+          "memoryGB": 8,
+          "diskGB": 50,
           "packages": [
-            "python"
+            "curl",
+            "htop",
+            "git"
           ]
-        }
+        },
+        "resourceList": null
       },
       {
         "role": "user",
-        "text": "I need a VM for my nextjs app"
+        "text": "i need it for 10,000 users for 5 hoirs"
       },
       {
         "role": "assistant",
@@ -69,170 +92,50 @@
           "templateId": "alpine",
           "templateName": "Alpine Linux",
           "hostname": "alpine-vm-01",
-          "cpu": 2,
-          "memoryGB": 4,
+          "cpu": 16,
+          "memoryGB": 64,
           "diskGB": 50,
           "packages": [
-            "nodejs",
-            "yarn",
-            "nginx",
-            "git"
+            "curl",
+            "htop"
           ]
-        }
+        },
+        "resourceList": null
       },
       {
         "role": "user",
-        "text": "Check my resources"
+        "text": "i dont know how many users will be there"
       },
       {
         "role": "assistant",
-        "text": "Here are your assigned resources:\n- hs-docker01 [vm] VMID 101 (running)\n- lab-k3s01 [vm] VMID 102 (running)\n- rhel-temp [vm] VMID 105 (stopped)\n- prakash [vm] VMID 106 (running)\n- monitor [vm] VMID 107 (running)\n- bigvm [vm] VMID 108 (running)\n- testinggggggggg [vm] VMID 109 (stopped)\n- test-small [vm] VMID 110 (running)\n- container [container] VMID 111 (stopped)\n- test-bigram [vm] VMID 112 (running)\n- test-bigdisk [vm] VMID 113 (running)\n- chk-ok [vm] VMID 117 (stopped)\n- Copy-of-VM-rhel-mern-template [vm] VMID 118 (running)",
-        "proposal": null
+        "text": "I prepared an editable proposal so you can review the defaults before provisioning.",
+        "proposal": {
+          "kind": "vm",
+          "templateId": "alpine",
+          "templateName": "Alpine Linux",
+          "hostname": "alpine-vm-01",
+          "cpu": 4,
+          "memoryGB": 8,
+          "diskGB": 50,
+          "packages": [
+            "curl",
+            "docker",
+            "docker-compose",
+            "htop",
+            "python"
+          ]
+        },
+        "resourceList": null
       },
       {
         "role": "user",
-        "text": "delete testinggggggggg"
+        "text": "give me python code for palendrome logic"
       },
       {
         "role": "assistant",
-        "text": "Delete requested for testinggggggggg (vm, VMID 109).",
-        "proposal": null
-      },
-      {
-        "role": "user",
-        "text": "Check my resources"
-      },
-      {
-        "role": "assistant",
-        "text": "Here are your assigned resources:\n- hs-docker01 [vm] VMID 101 (running)\n- lab-k3s01 [vm] VMID 102 (running)\n- rhel-temp [vm] VMID 105 (stopped)\n- prakash [vm] VMID 106 (running)\n- monitor [vm] VMID 107 (running)\n- bigvm [vm] VMID 108 (running)\n- test-small [vm] VMID 110 (running)\n- container [container] VMID 111 (stopped)\n- test-bigram [vm] VMID 112 (running)\n- test-bigdisk [vm] VMID 113 (running)\n- chk-ok [vm] VMID 117 (stopped)\n- Copy-of-VM-rhel-mern-template [vm] VMID 118 (running)",
-        "proposal": null
-      },
-      {
-        "role": "user",
-        "text": "Check my resources"
-      },
-      {
-        "role": "assistant",
-        "text": "Here are your assigned resources:",
+        "text": "I can only help with provisioning cloud infrastructure. I cannot provide Python code.",
         "proposal": null,
-        "resourceList": [
-          {
-            "vmid": 101,
-            "name": "hs-docker01",
-            "type": "vm",
-            "status": "running",
-            "owner": null,
-            "tags": []
-          },
-          {
-            "vmid": 102,
-            "name": "lab-k3s01",
-            "type": "vm",
-            "status": "running",
-            "owner": null,
-            "tags": []
-          },
-          {
-            "vmid": 105,
-            "name": "rhel-temp",
-            "type": "vm",
-            "status": "stopped",
-            "owner": "admin",
-            "tags": [
-              "user-admin"
-            ]
-          },
-          {
-            "vmid": 106,
-            "name": "prakash",
-            "type": "vm",
-            "status": "running",
-            "owner": "admin",
-            "tags": [
-              "env-vmbr30",
-              "user-admin"
-            ]
-          },
-          {
-            "vmid": 107,
-            "name": "monitor",
-            "type": "vm",
-            "status": "running",
-            "owner": "admin",
-            "tags": [
-              "env-vmbr190",
-              "user-admin"
-            ]
-          },
-          {
-            "vmid": 108,
-            "name": "bigvm",
-            "type": "vm",
-            "status": "running",
-            "owner": "admin",
-            "tags": [
-              "env-vmbr190",
-              "user-admin"
-            ]
-          },
-          {
-            "vmid": 110,
-            "name": "test-small",
-            "type": "vm",
-            "status": "running",
-            "owner": "admin",
-            "tags": [
-              "env-vmbr190",
-              "user-admin"
-            ]
-          },
-          {
-            "vmid": 111,
-            "name": "container",
-            "type": "container",
-            "status": "stopped",
-            "owner": null,
-            "tags": []
-          },
-          {
-            "vmid": 112,
-            "name": "test-bigram",
-            "type": "vm",
-            "status": "running",
-            "owner": "rahul",
-            "tags": [
-              "env-vmbr190",
-              "user-admin"
-            ]
-          },
-          {
-            "vmid": 113,
-            "name": "test-bigdisk",
-            "type": "vm",
-            "status": "running",
-            "owner": "admin",
-            "tags": [
-              "env-vmbr190",
-              "user-admin"
-            ]
-          },
-          {
-            "vmid": 117,
-            "name": "chk-ok",
-            "type": "vm",
-            "status": "stopped",
-            "owner": "admin",
-            "tags": []
-          },
-          {
-            "vmid": 118,
-            "name": "Copy-of-VM-rhel-mern-template",
-            "type": "vm",
-            "status": "running",
-            "owner": "admin",
-            "tags": []
-          }
-        ]
+        "resourceList": null
       }
     ]
   }

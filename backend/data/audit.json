@@ -3414,6 +3414,21 @@
       "detail": {
         "via": "chat"
       }
+    },
+    {
+      "id": "yJFvTnGkXv",
+      "timestamp": "2026-07-04T09:54:25.534Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "auth.login",
+      "target": "",
+      "status": "success",
+      "detail": {
+        "method": "local"
+      }
     }
   ]
 }

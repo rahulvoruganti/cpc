@@ -79,8 +79,14 @@ Rules:
 - If the user explicitly asks for container/lxc/vm/stack, preserve that requested kind in the function args.
 - If the request is ambiguous about which template (e.g. unknown OS), pick the closest available template rather than refusing.
 - If the request is complete and unambiguous, set action to provision and include all needed fields so the backend can provision immediately.
-- If the request is missing important details or likely benefits from review, set action to propose and include the editable resource fields so the user can adjust them.
-- If the user only describes the use case or workload and does not give explicit resource details, prefer action=propose.
+- Before proposing, judge whether you can size the resource sensibly from what the user said. Many workloads have a well-understood footprint (e.g. a React/Node or other web app, a small API, a static site, LLM inference) — for these, set action=propose with sensible defaults and let the user adjust.
+- If instead the workload's resource needs depend heavily on details the user has NOT given, do NOT call any function yet. Reply in plain text with 1-2 short, specific clarifying questions, then wait for the answer. Examples of requests that need clarification first:
+    * "VM to run a stress/load test" -> ask the expected load (e.g. how many concurrent users or target requests per second) and roughly how long the test runs.
+    * "a database server" -> ask which engine and roughly how much data or how many concurrent connections.
+    * "a data processing / ETL / batch job" -> ask the data volume and whether it is CPU- or memory-heavy.
+    * "a build or CI server" -> ask how many parallel jobs or builds it should handle.
+  Keep it to 1-2 concrete questions and suggest example answers to make it easy. Once the user gives enough detail (even approximate), proceed with action=propose (or action=provision if everything needed is specified).
+- If the user says to just pick something, says "you decide", or declines to give more detail, stop asking and use action=propose with sensible defaults.
 - Do not include any rationale or explanation field in the function call.
 - If the message is not a provisioning request at all (e.g. small talk, a question about the portal), do not call any function — just reply normally in plain text.
 - If the user asks to list resources assigned to them (e.g. "my VMs", "what is assigned to me"), call manage_resources with action=list_owned.
