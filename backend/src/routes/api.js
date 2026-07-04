@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { Router } from "express";
 import { CONTAINER_TEMPLATES, STACKS } from "../config/catalog.js";
 import { internalVmTemplates, findInternalTemplate } from "../config/internalCatalog.js";
@@ -46,6 +49,20 @@ router.use(requireAuth);
 router.get("/catalog/vm-templates", (req, res) => res.json([...mappedVmTemplates(), ...internalVmTemplates()]));
 router.get("/catalog/container-templates", (req, res) => res.json(CONTAINER_TEMPLATES));
 router.get("/catalog/stacks", (req, res) => res.json(STACKS));
+
+// Default packages shown per template in the Provision workspace (e.g. MEAN,
+// MERN). Read live from config/templateDefaults.json so it's editable without
+// a code change or restart. Shape: { "<TemplateName>": [{ letter, name }] }.
+const TEMPLATE_DEFAULTS_FILE = path.join(
+  path.dirname(fileURLToPath(import.meta.url)), "..", "config", "templateDefaults.json"
+);
+router.get("/catalog/template-defaults", (req, res) => {
+  try {
+    res.json(JSON.parse(fs.readFileSync(TEMPLATE_DEFAULTS_FILE, "utf-8")));
+  } catch {
+    res.json({});
+  }
+});
 
 // Environments the user can deploy into = admin-labelled networks (Mappings).
 router.get("/catalog/environments", (req, res) => {

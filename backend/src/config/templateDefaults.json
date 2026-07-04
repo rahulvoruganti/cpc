@@ -1,0 +1,14 @@
+{
+  "MEAN": [
+    { "letter": "M", "name": "MongoDB" },
+    { "letter": "E", "name": "Express.js" },
+    { "letter": "A", "name": "Angular" },
+    { "letter": "N", "name": "Node.js" }
+  ],
+  "MERN": [
+    { "letter": "M", "name": "MongoDB" },
+    { "letter": "E", "name": "Express.js" },
+    { "letter": "R", "name": "React" },
+    { "letter": "N", "name": "Node.js" }
+  ]
+}

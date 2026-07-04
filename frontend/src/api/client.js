@@ -38,6 +38,7 @@ export const updateMyPreferences = (preferences) =>
 export const getVmTemplates = () => api.get("/catalog/vm-templates").then((r) => r.data);
 export const getContainerTemplates = () => api.get("/catalog/container-templates").then((r) => r.data);
 export const getStacks = () => api.get("/catalog/stacks").then((r) => r.data);
+export const getTemplateDefaults = () => api.get("/catalog/template-defaults").then((r) => r.data);
 export const getEnvironments = () => api.get("/catalog/environments").then((r) => r.data);
 export const provisionVm = (p) => api.post("/provision/vm", p).then((r) => r.data);
 export const provisionInternal = (p) => api.post("/provision/internal", p).then((r) => r.data);

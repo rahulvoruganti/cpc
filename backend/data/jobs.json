@@ -2234,6 +2234,982 @@
           }
         ]
       }
+    },
+    {
+      "id": "d5YE-9aIHW",
+      "type": "internal",
+      "payload": {
+        "templateId": "internal-linux",
+        "hostname": "test",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "requestedBy": "admin",
+        "requestId": "J7LWM2Tqv_Bg",
+        "autoApproved": true,
+        "approvedBy": null
+      },
+      "status": "ready",
+      "message": "Internal provisioning for \"test\" completed. Open the summary for the full workflow.",
+      "resources": [
+        {
+          "vmid": null,
+          "hostname": "test",
+          "type": "vm",
+          "ip": "10.27.230.160",
+          "environment": "VLAN105",
+          "sshReady": true
+        }
+      ],
+      "error": null,
+      "logs": [
+        {
+          "ts": "2026-07-04T06:00:18.962Z",
+          "status": "pending",
+          "message": "Queued"
+        },
+        {
+          "ts": "2026-07-04T06:00:18.969Z",
+          "status": "provisioning",
+          "message": "Starting the internal provisioning workflow for \"test\"…"
+        },
+        {
+          "ts": "2026-07-04T06:00:19.002Z",
+          "status": "provisioning",
+          "message": "Determine datacenter — calling Linux team API…"
+        },
+        {
+          "ts": "2026-07-04T06:00:20.549Z",
+          "status": "provisioning",
+          "message": "Determine datacenter — called Linux team API · DC Ghislenghien"
+        },
+        {
+          "ts": "2026-07-04T06:00:20.553Z",
+          "status": "provisioning",
+          "message": "Reserve server street — calling Linux team API…"
+        },
+        {
+          "ts": "2026-07-04T06:00:22.090Z",
+          "status": "provisioning",
+          "message": "Reserve server street — called Linux team API · STR-07"
+        },
+        {
+          "ts": "2026-07-04T06:00:22.096Z",
+          "status": "provisioning",
+          "message": "Create / identify ISO / template — calling Linux team API…"
+        },
+        {
+          "ts": "2026-07-04T06:00:23.644Z",
+          "status": "provisioning",
+          "message": "Create / identify ISO / template — called Linux team API · rhel9-std-2024.03"
+        },
+        {
+          "ts": "2026-07-04T06:00:23.650Z",
+          "status": "provisioning",
+          "message": "Reserve IP — calling Network team API…"
+        },
+        {
+          "ts": "2026-07-04T06:00:25.203Z",
+          "status": "provisioning",
+          "message": "Reserve IP — called Network team API · 10.27.230.160"
+        },
+        {
+          "ts": "2026-07-04T06:00:25.208Z",
+          "status": "provisioning",
+          "message": "VM creation — calling Compute & Storage team API…"
+        },
+        {
+          "ts": "2026-07-04T06:00:26.763Z",
+          "status": "provisioning",
+          "message": "VM creation — called Compute & Storage team API · 27327"
+        },
+        {
+          "ts": "2026-07-04T06:00:26.768Z",
+          "status": "provisioning",
+          "message": "OMI agent — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:00:28.313Z",
+          "status": "provisioning",
+          "message": "OMI agent — called Linux team Ansible playbook · AAP-1839949"
+        },
+        {
+          "ts": "2026-07-04T06:00:28.319Z",
+          "status": "provisioning",
+          "message": "Setting PPDM tag — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:00:29.870Z",
+          "status": "provisioning",
+          "message": "Setting PPDM tag — called Linux team Ansible playbook · AAP-7917825"
+        },
+        {
+          "ts": "2026-07-04T06:00:29.875Z",
+          "status": "provisioning",
+          "message": "ServiceNow CMDB update — calling ServiceNow Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:00:31.421Z",
+          "status": "provisioning",
+          "message": "ServiceNow CMDB update — called ServiceNow Ansible playbook · CI00178246"
+        },
+        {
+          "ts": "2026-07-04T06:00:31.426Z",
+          "status": "provisioning",
+          "message": "Guardicore agent — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:00:32.979Z",
+          "status": "provisioning",
+          "message": "Guardicore agent — called Linux team Ansible playbook · AAP-5178001"
+        },
+        {
+          "ts": "2026-07-04T06:00:32.984Z",
+          "status": "provisioning",
+          "message": "Defender agent — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:00:34.534Z",
+          "status": "provisioning",
+          "message": "Defender agent — called Linux team Ansible playbook · AAP-2910329"
+        },
+        {
+          "ts": "2026-07-04T06:00:34.539Z",
+          "status": "provisioning",
+          "message": "Grant VM permissions — calling Compute & Storage team API…"
+        },
+        {
+          "ts": "2026-07-04T06:00:36.083Z",
+          "status": "provisioning",
+          "message": "Grant VM permissions — called Compute & Storage team API · PERM-989567"
+        },
+        {
+          "ts": "2026-07-04T06:00:36.088Z",
+          "status": "ready",
+          "message": "Internal provisioning for \"test\" completed. Open the summary for the full workflow."
+        }
+      ],
+      "createdAt": "2026-07-04T06:00:18.962Z",
+      "updatedAt": "2026-07-04T06:00:36.088Z",
+      "steps": [
+        {
+          "key": "datacenter",
+          "stage": "Preparation",
+          "label": "Determine datacenter",
+          "via": "Linux team API",
+          "state": "done",
+          "system": "Linux team API",
+          "reference": "DC Ghislenghien",
+          "detail": "Target datacenter determined: DC Ghislenghien"
+        },
+        {
+          "key": "server-street",
+          "stage": "Preparation",
+          "label": "Reserve server street",
+          "via": "Linux team API",
+          "state": "done",
+          "system": "Linux team API",
+          "reference": "STR-07",
+          "detail": "Reserved server street STR-07 in DC Ghislenghien"
+        },
+        {
+          "key": "iso-template",
+          "stage": "Preparation",
+          "label": "Create / identify ISO / template",
+          "via": "Linux team API",
+          "state": "done",
+          "system": "Linux team API",
+          "reference": "rhel9-std-2024.03",
+          "detail": "Using build template rhel9-std-2024.03"
+        },
+        {
+          "key": "ip",
+          "stage": "Preparation",
+          "label": "Reserve IP",
+          "via": "Network team API",
+          "state": "done",
+          "system": "Network team API",
+          "reference": "10.27.230.160",
+          "detail": "Reserved 10.27.230.160/24 (gw 10.27.230.1, VLAN105)"
+        },
+        {
+          "key": "vm-create",
+          "stage": "Provisioning",
+          "label": "VM creation",
+          "via": "Compute & Storage team API",
+          "state": "done",
+          "system": "Compute & Storage team API",
+          "reference": "27327",
+          "detail": "Created VM test (id 27327) on esx-31.dc.internal"
+        },
+        {
+          "key": "omi",
+          "stage": "Post actions",
+          "label": "OMI agent",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-1839949",
+          "detail": "OMI monitoring agent installed and enrolled"
+        },
+        {
+          "key": "ppdm",
+          "stage": "Post actions",
+          "label": "Setting PPDM tag",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-7917825",
+          "detail": "PPDM backup tag applied"
+        },
+        {
+          "key": "cmdb",
+          "stage": "Post actions",
+          "label": "ServiceNow CMDB update",
+          "via": "ServiceNow Ansible playbook",
+          "state": "done",
+          "system": "ServiceNow Ansible playbook",
+          "reference": "CI00178246",
+          "detail": "CMDB configuration item created for test"
+        },
+        {
+          "key": "guardicore",
+          "stage": "Post actions",
+          "label": "Guardicore agent",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-5178001",
+          "detail": "Guardicore micro-segmentation agent installed"
+        },
+        {
+          "key": "defender",
+          "stage": "Post actions",
+          "label": "Defender agent",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-2910329",
+          "detail": "Microsoft Defender agent installed and onboarded"
+        },
+        {
+          "key": "grant-perms",
+          "stage": "Post actions",
+          "label": "Grant VM permissions",
+          "via": "Compute & Storage team API",
+          "state": "done",
+          "system": "Compute & Storage team API",
+          "reference": "PERM-989567",
+          "detail": "VM permissions granted to admin"
+        }
+      ],
+      "stages": [
+        "Preparation",
+        "Provisioning",
+        "Post actions"
+      ],
+      "result": {
+        "hostname": "test",
+        "provider": "internal",
+        "ip": "10.27.230.160",
+        "fqdn": null,
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "workflow": [
+          {
+            "step": "Determine datacenter",
+            "stage": "Preparation",
+            "system": "Linux team API",
+            "reference": "DC Ghislenghien",
+            "detail": "Target datacenter determined: DC Ghislenghien"
+          },
+          {
+            "step": "Reserve server street",
+            "stage": "Preparation",
+            "system": "Linux team API",
+            "reference": "STR-07",
+            "detail": "Reserved server street STR-07 in DC Ghislenghien"
+          },
+          {
+            "step": "Create / identify ISO / template",
+            "stage": "Preparation",
+            "system": "Linux team API",
+            "reference": "rhel9-std-2024.03",
+            "detail": "Using build template rhel9-std-2024.03"
+          },
+          {
+            "step": "Reserve IP",
+            "stage": "Preparation",
+            "system": "Network team API",
+            "reference": "10.27.230.160",
+            "detail": "Reserved 10.27.230.160/24 (gw 10.27.230.1, VLAN105)"
+          },
+          {
+            "step": "VM creation",
+            "stage": "Provisioning",
+            "system": "Compute & Storage team API",
+            "reference": "27327",
+            "detail": "Created VM test (id 27327) on esx-31.dc.internal"
+          },
+          {
+            "step": "OMI agent",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-1839949",
+            "detail": "OMI monitoring agent installed and enrolled"
+          },
+          {
+            "step": "Setting PPDM tag",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-7917825",
+            "detail": "PPDM backup tag applied"
+          },
+          {
+            "step": "ServiceNow CMDB update",
+            "stage": "Post actions",
+            "system": "ServiceNow Ansible playbook",
+            "reference": "CI00178246",
+            "detail": "CMDB configuration item created for test"
+          },
+          {
+            "step": "Guardicore agent",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-5178001",
+            "detail": "Guardicore micro-segmentation agent installed"
+          },
+          {
+            "step": "Defender agent",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-2910329",
+            "detail": "Microsoft Defender agent installed and onboarded"
+          },
+          {
+            "step": "Grant VM permissions",
+            "stage": "Post actions",
+            "system": "Compute & Storage team API",
+            "reference": "PERM-989567",
+            "detail": "VM permissions granted to admin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "vzoqM2FhkB",
+      "type": "internal",
+      "payload": {
+        "templateId": "internal-linux",
+        "hostname": "prakashtest",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "requestedBy": "admin",
+        "requestId": "S4LFDKpAhAOB",
+        "autoApproved": true,
+        "approvedBy": null
+      },
+      "status": "ready",
+      "message": "Internal provisioning for \"prakashtest\" completed. Open the summary for the full workflow.",
+      "resources": [
+        {
+          "vmid": null,
+          "hostname": "prakashtest",
+          "type": "vm",
+          "ip": "10.50.225.68",
+          "environment": "VLAN154",
+          "sshReady": true
+        }
+      ],
+      "error": null,
+      "logs": [
+        {
+          "ts": "2026-07-04T06:09:57.100Z",
+          "status": "pending",
+          "message": "Queued"
+        },
+        {
+          "ts": "2026-07-04T06:09:57.105Z",
+          "status": "provisioning",
+          "message": "Starting the internal provisioning workflow for \"prakashtest\"…"
+        },
+        {
+          "ts": "2026-07-04T06:09:57.132Z",
+          "status": "provisioning",
+          "message": "Determine datacenter — calling Linux team API…"
+        },
+        {
+          "ts": "2026-07-04T06:09:58.676Z",
+          "status": "provisioning",
+          "message": "Determine datacenter — Linux team API call succeeded · DC Ghislenghien"
+        },
+        {
+          "ts": "2026-07-04T06:09:58.680Z",
+          "status": "provisioning",
+          "message": "Reserve server street — calling Linux team API…"
+        },
+        {
+          "ts": "2026-07-04T06:10:00.223Z",
+          "status": "provisioning",
+          "message": "Reserve server street — Linux team API call succeeded · STR-11"
+        },
+        {
+          "ts": "2026-07-04T06:10:00.228Z",
+          "status": "provisioning",
+          "message": "Create / identify ISO / template — calling Linux team API…"
+        },
+        {
+          "ts": "2026-07-04T06:10:01.798Z",
+          "status": "provisioning",
+          "message": "Create / identify ISO / template — Linux team API call succeeded · rhel9-std-2026.04"
+        },
+        {
+          "ts": "2026-07-04T06:10:01.827Z",
+          "status": "provisioning",
+          "message": "Reserve IP — calling Network team API…"
+        },
+        {
+          "ts": "2026-07-04T06:10:03.374Z",
+          "status": "provisioning",
+          "message": "Reserve IP — Network team API call succeeded · 10.50.225.68"
+        },
+        {
+          "ts": "2026-07-04T06:10:03.379Z",
+          "status": "provisioning",
+          "message": "VM creation — calling Compute & Storage team API…"
+        },
+        {
+          "ts": "2026-07-04T06:10:04.909Z",
+          "status": "provisioning",
+          "message": "VM creation — Compute & Storage team API call succeeded · 41113"
+        },
+        {
+          "ts": "2026-07-04T06:10:04.913Z",
+          "status": "provisioning",
+          "message": "OMI agent — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:10:06.457Z",
+          "status": "provisioning",
+          "message": "OMI agent — Linux team Ansible playbook call succeeded · AAP-8523866"
+        },
+        {
+          "ts": "2026-07-04T06:10:06.461Z",
+          "status": "provisioning",
+          "message": "Setting PPDM tag — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:10:07.993Z",
+          "status": "provisioning",
+          "message": "Setting PPDM tag — Linux team Ansible playbook call succeeded · AAP-9911958"
+        },
+        {
+          "ts": "2026-07-04T06:10:07.998Z",
+          "status": "provisioning",
+          "message": "ServiceNow CMDB update — calling ServiceNow Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:10:09.536Z",
+          "status": "provisioning",
+          "message": "ServiceNow CMDB update — ServiceNow Ansible playbook call succeeded · CI12778978"
+        },
+        {
+          "ts": "2026-07-04T06:10:09.539Z",
+          "status": "provisioning",
+          "message": "Guardicore agent — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:10:11.088Z",
+          "status": "provisioning",
+          "message": "Guardicore agent — Linux team Ansible playbook call succeeded · AAP-7920510"
+        },
+        {
+          "ts": "2026-07-04T06:10:11.091Z",
+          "status": "provisioning",
+          "message": "Defender agent — calling Linux team Ansible playbook…"
+        },
+        {
+          "ts": "2026-07-04T06:10:12.633Z",
+          "status": "provisioning",
+          "message": "Defender agent — Linux team Ansible playbook call succeeded · AAP-5759979"
+        },
+        {
+          "ts": "2026-07-04T06:10:12.637Z",
+          "status": "provisioning",
+          "message": "Grant VM permissions — calling Compute & Storage team API…"
+        },
+        {
+          "ts": "2026-07-04T06:10:14.183Z",
+          "status": "provisioning",
+          "message": "Grant VM permissions — Compute & Storage team API call succeeded · PERM-801316"
+        },
+        {
+          "ts": "2026-07-04T06:10:14.187Z",
+          "status": "ready",
+          "message": "Internal provisioning for \"prakashtest\" completed. Open the summary for the full workflow."
+        }
+      ],
+      "createdAt": "2026-07-04T06:09:57.100Z",
+      "updatedAt": "2026-07-04T06:10:14.187Z",
+      "steps": [
+        {
+          "key": "datacenter",
+          "stage": "Preparation",
+          "label": "Determine datacenter",
+          "via": "Linux team API",
+          "state": "done",
+          "system": "Linux team API",
+          "reference": "DC Ghislenghien",
+          "detail": "Target datacenter determined: DC Ghislenghien"
+        },
+        {
+          "key": "server-street",
+          "stage": "Preparation",
+          "label": "Reserve server street",
+          "via": "Linux team API",
+          "state": "done",
+          "system": "Linux team API",
+          "reference": "STR-11",
+          "detail": "Reserved server street STR-11 in DC Ghislenghien"
+        },
+        {
+          "key": "iso-template",
+          "stage": "Preparation",
+          "label": "Create / identify ISO / template",
+          "via": "Linux team API",
+          "state": "done",
+          "system": "Linux team API",
+          "reference": "rhel9-std-2026.04",
+          "detail": "Using build template rhel9-std-2026.04"
+        },
+        {
+          "key": "ip",
+          "stage": "Preparation",
+          "label": "Reserve IP",
+          "via": "Network team API",
+          "state": "done",
+          "system": "Network team API",
+          "reference": "10.50.225.68",
+          "detail": "Reserved 10.50.225.68/24 (gw 10.50.225.1, VLAN154)"
+        },
+        {
+          "key": "vm-create",
+          "stage": "Provisioning",
+          "label": "VM creation",
+          "via": "Compute & Storage team API",
+          "state": "done",
+          "system": "Compute & Storage team API",
+          "reference": "41113",
+          "detail": "Created VM prakashtest (id 41113) on esx-26.dc.internal"
+        },
+        {
+          "key": "omi",
+          "stage": "Post actions",
+          "label": "OMI agent",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-8523866",
+          "detail": "OMI monitoring agent installed and enrolled"
+        },
+        {
+          "key": "ppdm",
+          "stage": "Post actions",
+          "label": "Setting PPDM tag",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-9911958",
+          "detail": "PPDM backup tag applied"
+        },
+        {
+          "key": "cmdb",
+          "stage": "Post actions",
+          "label": "ServiceNow CMDB update",
+          "via": "ServiceNow Ansible playbook",
+          "state": "done",
+          "system": "ServiceNow Ansible playbook",
+          "reference": "CI12778978",
+          "detail": "CMDB configuration item created for prakashtest"
+        },
+        {
+          "key": "guardicore",
+          "stage": "Post actions",
+          "label": "Guardicore agent",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-7920510",
+          "detail": "Guardicore micro-segmentation agent installed"
+        },
+        {
+          "key": "defender",
+          "stage": "Post actions",
+          "label": "Defender agent",
+          "via": "Linux team Ansible playbook",
+          "state": "done",
+          "system": "Linux team Ansible playbook",
+          "reference": "AAP-5759979",
+          "detail": "Microsoft Defender agent installed and onboarded"
+        },
+        {
+          "key": "grant-perms",
+          "stage": "Post actions",
+          "label": "Grant VM permissions",
+          "via": "Compute & Storage team API",
+          "state": "done",
+          "system": "Compute & Storage team API",
+          "reference": "PERM-801316",
+          "detail": "VM permissions granted to admin"
+        }
+      ],
+      "stages": [
+        "Preparation",
+        "Provisioning",
+        "Post actions"
+      ],
+      "result": {
+        "hostname": "prakashtest",
+        "provider": "internal",
+        "ip": "10.50.225.68",
+        "fqdn": null,
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "workflow": [
+          {
+            "step": "Determine datacenter",
+            "stage": "Preparation",
+            "system": "Linux team API",
+            "reference": "DC Ghislenghien",
+            "detail": "Target datacenter determined: DC Ghislenghien"
+          },
+          {
+            "step": "Reserve server street",
+            "stage": "Preparation",
+            "system": "Linux team API",
+            "reference": "STR-11",
+            "detail": "Reserved server street STR-11 in DC Ghislenghien"
+          },
+          {
+            "step": "Create / identify ISO / template",
+            "stage": "Preparation",
+            "system": "Linux team API",
+            "reference": "rhel9-std-2026.04",
+            "detail": "Using build template rhel9-std-2026.04"
+          },
+          {
+            "step": "Reserve IP",
+            "stage": "Preparation",
+            "system": "Network team API",
+            "reference": "10.50.225.68",
+            "detail": "Reserved 10.50.225.68/24 (gw 10.50.225.1, VLAN154)"
+          },
+          {
+            "step": "VM creation",
+            "stage": "Provisioning",
+            "system": "Compute & Storage team API",
+            "reference": "41113",
+            "detail": "Created VM prakashtest (id 41113) on esx-26.dc.internal"
+          },
+          {
+            "step": "OMI agent",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-8523866",
+            "detail": "OMI monitoring agent installed and enrolled"
+          },
+          {
+            "step": "Setting PPDM tag",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-9911958",
+            "detail": "PPDM backup tag applied"
+          },
+          {
+            "step": "ServiceNow CMDB update",
+            "stage": "Post actions",
+            "system": "ServiceNow Ansible playbook",
+            "reference": "CI12778978",
+            "detail": "CMDB configuration item created for prakashtest"
+          },
+          {
+            "step": "Guardicore agent",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-7920510",
+            "detail": "Guardicore micro-segmentation agent installed"
+          },
+          {
+            "step": "Defender agent",
+            "stage": "Post actions",
+            "system": "Linux team Ansible playbook",
+            "reference": "AAP-5759979",
+            "detail": "Microsoft Defender agent installed and onboarded"
+          },
+          {
+            "step": "Grant VM permissions",
+            "stage": "Post actions",
+            "system": "Compute & Storage team API",
+            "reference": "PERM-801316",
+            "detail": "VM permissions granted to admin"
+          }
+        ]
+      }
+    },
+    {
+      "id": "iU3yCg3_qp",
+      "type": "vm",
+      "payload": {
+        "templateId": "tpl-116",
+        "hostname": "prakash",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "username": "pkacqx4",
+        "sudoAccess": false,
+        "environment": "vmbr30",
+        "requestedBy": "admin",
+        "requestId": "Csk3-PACLBnW",
+        "autoApproved": true,
+        "approvedBy": null
+      },
+      "status": "provisioning",
+      "message": "Laying down the golden OS image…",
+      "resources": [],
+      "error": null,
+      "logs": [
+        {
+          "ts": "2026-07-04T06:17:48.186Z",
+          "status": "pending",
+          "message": "Queued"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.219Z",
+          "status": "provisioning",
+          "message": "Receiving your new-server request…"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.225Z",
+          "status": "provisioning",
+          "message": "New server request submitted"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.246Z",
+          "status": "provisioning",
+          "message": "Checking approval requirements…"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.272Z",
+          "status": "provisioning",
+          "message": "Standard request — auto-approved"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.295Z",
+          "status": "provisioning",
+          "message": "Locking in the approval…"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.322Z",
+          "status": "provisioning",
+          "message": "Request approved — kicking off the build"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.342Z",
+          "status": "provisioning",
+          "message": "Carving out your virtual machine on the cluster…"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.481Z",
+          "status": "provisioning",
+          "message": "Virtual machine #106 provisioned"
+        },
+        {
+          "ts": "2026-07-04T06:17:48.484Z",
+          "status": "provisioning",
+          "message": "Laying down the golden OS image…"
+        }
+      ],
+      "createdAt": "2026-07-04T06:17:48.186Z",
+      "updatedAt": "2026-07-04T06:17:48.484Z",
+      "steps": [
+        {
+          "key": "submitted",
+          "label": "Request submitted",
+          "active": "Receiving your new-server request…",
+          "done": "New server request submitted",
+          "group": "request",
+          "state": "done",
+          "etaSec": 3,
+          "startedAt": "2026-07-04T06:17:48.219Z",
+          "endedAt": "2026-07-04T06:17:48.223Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approval",
+          "label": "Approvals",
+          "active": "Checking approval requirements…",
+          "done": "Standard request — auto-approved",
+          "group": "request",
+          "state": "done",
+          "etaSec": 3,
+          "startedAt": "2026-07-04T06:17:48.246Z",
+          "endedAt": "2026-07-04T06:17:48.270Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approved",
+          "label": "Approved",
+          "active": "Locking in the approval…",
+          "done": "Request approved — kicking off the build",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:17:48.295Z",
+          "endedAt": "2026-07-04T06:17:48.319Z",
+          "tookSec": 0
+        },
+        {
+          "key": "provision_vm",
+          "label": "Provisioning the VM",
+          "active": "Carving out your virtual machine on the cluster…",
+          "done": "Virtual machine #106 provisioned",
+          "group": "build",
+          "state": "done",
+          "etaSec": 57,
+          "startedAt": "2026-07-04T06:17:48.342Z",
+          "endedAt": "2026-07-04T06:17:48.477Z",
+          "tookSec": 0
+        },
+        {
+          "key": "deploy_os",
+          "label": "Deploying the OS",
+          "active": "Laying down the golden OS image…",
+          "done": "Operating system deployed",
+          "group": "build",
+          "state": "active",
+          "etaSec": 50,
+          "startedAt": "2026-07-04T06:17:48.484Z",
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "allocate_resources",
+          "label": "Allocating resources",
+          "active": "Dialing in your CPU, memory and storage…",
+          "done": "Requested resources allocated",
+          "group": "build",
+          "state": "pending",
+          "etaSec": 19,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "assign_ip",
+          "label": "Assigning IP address",
+          "active": "Wiring your machine into the network…",
+          "done": "Network attached (DHCP)",
+          "group": "build",
+          "state": "pending",
+          "etaSec": 15,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "power_on",
+          "label": "Powering on",
+          "active": "Powering on your virtual machine…",
+          "done": "Powered on",
+          "group": "boot",
+          "state": "pending",
+          "etaSec": 13,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "system_startup",
+          "label": "System startup",
+          "active": "Waiting for the system to come alive…",
+          "done": "System is online",
+          "group": "boot",
+          "state": "pending",
+          "etaSec": 113,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "initial_setup",
+          "label": "Initial setup",
+          "active": "Running first-boot initialization and creating your account…",
+          "done": "Initial setup complete",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 32,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "default_packages",
+          "label": "Security baseline",
+          "active": "Hardening with the Colruyt baseline — Defender, OMI Client, Guardicore…",
+          "done": "Security baseline installed",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 57,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "requested_packages",
+          "label": "Requested software",
+          "active": "Installing your requested software…",
+          "done": "Requested software installed",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 44,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "validate",
+          "label": "Validation",
+          "active": "Running final health checks on your server…",
+          "done": "Server validated end-to-end",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 19,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "summarize",
+          "label": "Summary",
+          "active": "Wrapping up and preparing your summary…",
+          "done": "All done — your server is ready 🎉",
+          "group": "done",
+          "state": "pending",
+          "etaSec": 4,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        }
+      ]
     }
   ]
 }

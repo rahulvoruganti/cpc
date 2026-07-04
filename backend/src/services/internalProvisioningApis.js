@@ -5,17 +5,17 @@ import { logAudit } from "./auditService.js";
 
 // --- Internal provisioning integrations ---
 //
-// Each function integrates with a real internal system over HTTP when that
-// system's endpoint is configured in the admin Settings tab
-// (INTERNAL_<SYSTEM>_URL / INTERNAL_<SYSTEM>_TOKEN). When it isn't configured,
-// the call falls back to a realistic simulated response so the workflow still
-// completes end to end — useful before the real integrations are wired up.
+// The internal workflow (config/internalCatalog.js) is a list of steps, each
+// declaring the `system` (team API / Ansible playbook) it calls. This module
+// executes one step: when that system's endpoint is configured in the admin
+// Settings tab (INTERNAL_<SYSTEM>_URL / INTERNAL_<SYSTEM>_TOKEN) it makes the
+// real authenticated HTTP call; otherwise it returns a realistic simulated
+// response so the workflow still completes end to end.
 //
-// Both paths return the same { system, reference, detail, fields } shape, so
-// the provisioner and UI treat a simulated step exactly like a real one. The
-// fields a later step depends on (ip, gateway, subnet, vlan, fqdn) are always
-// populated. Endpoints are read from process.env at call time so a saved
-// Settings change takes effect immediately.
+// Both paths return { system, reference, detail, fields }. `fields` is merged
+// into the workflow context so later steps can reference earlier results (e.g.
+// the datacenter, reserved IP, or created VMID). Endpoints are read from
+// process.env at call time so a saved Settings change takes effect immediately.
 
 const timeoutMs = () => Number(process.env.INTERNAL_HTTP_TIMEOUT_MS) || 30000;
 
@@ -36,6 +36,7 @@ function httpsAgent() {
 // Whether a system's endpoint has been configured in Settings. When false, the
 // corresponding step is simulated rather than calling out.
 export function isSystemConfigured(system) {
+  if (!system) return false;
   const url = process.env[`INTERNAL_${String(system).toUpperCase()}_URL`];
   return !!(url && String(url).trim());
 }
@@ -48,10 +49,13 @@ function pick(obj, keys) {
   return undefined;
 }
 
+// Cross-step fields that are lifted from a real response's top level (if not
+// already nested under `fields`) so later steps can consume them.
+const CARRY_FIELDS = ["ip", "gateway", "subnet", "vlan", "fqdn", "datacenter", "serverStreet", "template", "vmid", "node", "datastore"];
+
 // --- Simulated-response helpers (used when a system isn't configured) ---
 const rand = (min, max) => crypto.randomInt(min, max + 1);
 const ref = (prefix, digits = 7) => `${prefix}${String(rand(0, 10 ** digits - 1)).padStart(digits, "0")}`;
-let reqSeq = 4500000 + rand(1000, 8999);
 
 // POST to a configured internal system endpoint. Wraps any HTTP error with the
 // system + status so a real integration failure surfaces on the job.
@@ -77,7 +81,7 @@ async function callSystem(system, action, body) {
       : err.message;
     logAudit({
       actor: { username: "system", role: "system" },
-      action: `internal.${system}.${action}`,
+      action: `internal.${key}.${action}`,
       target: url,
       status: "failure",
       detail: { httpStatus: status || null, error: detail },
@@ -88,219 +92,95 @@ async function callSystem(system, action, body) {
   const data = res.data ?? {};
   logAudit({
     actor: { username: "system", role: "system" },
-    action: `internal.${system}.${action}`,
-    target: String(pick(data, ["reference", "number", "id", "ip", "fqdn"]) || url),
+    action: `internal.${key}.${action}`,
+    target: String(pick(data, ["reference", "id", "number", "ip", "fqdn"]) || url),
     status: "success",
     detail: { httpStatus: res.status },
   });
   return data;
 }
 
-// Log a simulated call the same way a real one is audited (flagged simulated).
-function recordSimulated(system, action, target) {
+// Build a realistic simulated result for a step, keyed by step.key. Produces a
+// reference + any fields later steps depend on.
+function simulate(step, ctx) {
+  const host = (ctx.hostname || "host").toLowerCase();
+  switch (step.key) {
+    case "datacenter": {
+      const datacenter = ["DC Halle", "DC Ghislenghien"][rand(0, 1)];
+      return { reference: datacenter, detail: `Target datacenter determined: ${datacenter}`, fields: { datacenter } };
+    }
+    case "server-street": {
+      const serverStreet = `STR-${String(rand(1, 24)).padStart(2, "0")}`;
+      return { reference: serverStreet, detail: `Reserved server street ${serverStreet} in ${ctx.datacenter || "the datacenter"}`, fields: { serverStreet } };
+    }
+    case "iso-template": {
+      const template = `rhel9-std-${rand(2024, 2026)}.${String(rand(1, 12)).padStart(2, "0")}`;
+      return { reference: template, detail: `Using build template ${template}`, fields: { template } };
+    }
+    case "ip": {
+      const octet2 = rand(20, 60);
+      const octet3 = rand(10, 240);
+      const ip = `10.${octet2}.${octet3}.${rand(20, 240)}`;
+      const gateway = `10.${octet2}.${octet3}.1`;
+      const subnet = `10.${octet2}.${octet3}.0/24`;
+      const vlan = `VLAN${rand(100, 199)}`;
+      return { reference: ip, detail: `Reserved ${ip}/24 (gw ${gateway}, ${vlan})`, fields: { ip, gateway, subnet, vlan } };
+    }
+    case "vm-create": {
+      const vmid = rand(10000, 99999);
+      const node = `esx-${String(rand(1, 32)).padStart(2, "0")}.dc.internal`;
+      return { reference: String(vmid), detail: `Created VM ${host} (id ${vmid}) on ${node}`, fields: { vmid, node } };
+    }
+    case "omi":
+      return { reference: ref("AAP-", 7), detail: "OMI monitoring agent installed and enrolled" };
+    case "ppdm":
+      return { reference: ref("AAP-", 7), detail: "PPDM backup tag applied" };
+    case "cmdb":
+      return { reference: ref("CI", 8), detail: `CMDB configuration item created for ${host}` };
+    case "guardicore":
+      return { reference: ref("AAP-", 7), detail: "Guardicore micro-segmentation agent installed" };
+    case "defender":
+      return { reference: ref("AAP-", 7), detail: "Microsoft Defender agent installed and onboarded" };
+    case "grant-perms":
+      return { reference: ref("PERM-", 6), detail: `VM permissions granted to ${ctx.requestedBy || "requester"}` };
+    default:
+      return { reference: ref("OK-", 6), detail: `${step.label} completed` };
+  }
+}
+
+// Execute a single workflow step: real call when its system is configured,
+// simulated response otherwise. `via` (the team/API name) is used as the
+// result's `system` label shown in the monitor and summary.
+export async function executeStep(step, ctx) {
+  if (isSystemConfigured(step.system)) {
+    const data = await callSystem(step.system, step.key, {
+      action: step.key,
+      hostname: ctx.hostname,
+      cpu: ctx.cpu,
+      memoryGB: ctx.memoryGB,
+      diskGB: ctx.diskGB,
+      requestedBy: ctx.requestedBy,
+      // Carry forward everything gathered so far (datacenter, ip, vmid, …).
+      context: ctx,
+    });
+    const fields = { ...(data.fields || {}) };
+    for (const k of CARRY_FIELDS) {
+      if (data[k] != null && fields[k] == null) fields[k] = data[k];
+    }
+    return {
+      system: step.via,
+      reference: pick(data, ["reference", "id", "number", "ip", "fqdn", "name"]) ?? null,
+      detail: pick(data, ["detail", "message"]) || `${step.via} completed`,
+      fields,
+    };
+  }
+
+  const sim = simulate(step, ctx);
   logAudit({
     actor: { username: "system", role: "system" },
-    action: `internal.${system}.${action}`,
-    target,
+    action: `internal.${String(step.system || step.key).toUpperCase()}.${step.key}`,
+    target: String(sim.reference ?? step.key),
     detail: { simulated: true },
   });
+  return { system: step.via, reference: sim.reference ?? null, detail: sim.detail, fields: sim.fields || {} };
 }
-
-export async function openServiceRequest({ hostname, requestedBy, cpu, memoryGB, diskGB } = {}) {
-  if (isSystemConfigured("ITSM")) {
-    const data = await callSystem("itsm", "request.open", {
-      shortDescription: `Provision internal Linux server: ${hostname || "workspace"}`,
-      hostname, requestedBy, cpu, memoryGB, diskGB,
-    });
-    const reference = pick(data, ["number", "reference", "requestNumber", "sysId", "sys_id", "id"]);
-    return {
-      system: data.system || "ITSM",
-      reference,
-      detail: pick(data, ["detail", "message"]) || `Service request ${reference || ""} opened`.trim(),
-      fields: data.fields || { requestNumber: reference },
-    };
-  }
-  reqSeq += 1;
-  const number = `REQ${String(reqSeq).padStart(7, "0")}`;
-  recordSimulated("itsm", "request.open", number);
-  return {
-    system: "ServiceNow ITSM",
-    reference: number,
-    detail: `Service request ${number} opened for ${hostname || "workspace"}`,
-    fields: { requestNumber: number },
-  };
-}
-
-export async function allocateIpAddress({ hostname } = {}) {
-  if (isSystemConfigured("IPAM")) {
-    const data = await callSystem("ipam", "address.allocate", { hostname });
-    const ip = pick(data, ["ip", "ipAddress", "address"]);
-    const gateway = pick(data, ["gateway", "gw"]);
-    const subnet = pick(data, ["subnet", "cidr", "network"]);
-    const vlan = pick(data, ["vlan", "vlanId", "vlanName"]);
-    if (!ip) throw new Error("IPAM did not return an IP address");
-    return {
-      system: data.system || "IPAM",
-      reference: ip,
-      detail: pick(data, ["detail", "message"])
-        || `Allocated ${ip}${subnet ? ` (${subnet})` : ""}${gateway ? ` gw ${gateway}` : ""}`,
-      fields: { ip, gateway, subnet, vlan },
-    };
-  }
-  const vlan = rand(100, 199);
-  const octet2 = vlan - 100 + 20;
-  const octet3 = rand(10, 240);
-  const ip = `10.${octet2}.${octet3}.${rand(20, 240)}`;
-  const gateway = `10.${octet2}.${octet3}.1`;
-  const subnet = `10.${octet2}.${octet3}.0/24`;
-  recordSimulated("ipam", "address.allocate", ip);
-  return {
-    system: "Infoblox IPAM",
-    reference: ip,
-    detail: `Allocated ${ip}/24 on VLAN ${vlan} (gw ${gateway})`,
-    fields: { ip, gateway, subnet, vlan: `VLAN${vlan}` },
-  };
-}
-
-export async function reserveCompute({ cpu, memoryGB, hostname } = {}) {
-  if (isSystemConfigured("COMPUTE")) {
-    const data = await callSystem("compute", "capacity.reserve", { cpu, memoryGB, hostname });
-    const reference = pick(data, ["reference", "node", "host", "id"]);
-    return {
-      system: data.system || "Compute",
-      reference,
-      detail: pick(data, ["detail", "message"])
-        || `Reserved ${cpu ?? "?"} vCPU / ${memoryGB ?? "?"} GB on ${reference || "compute"}`,
-      fields: data.fields || { node: reference, cluster: pick(data, ["cluster"]) },
-    };
-  }
-  const cluster = `PROD-CL${rand(1, 4)}`;
-  const node = `esx-${String(rand(1, 32)).padStart(2, "0")}.dc.internal`;
-  recordSimulated("compute", "capacity.reserve", node);
-  return {
-    system: "Datacenter Capacity Broker",
-    reference: node,
-    detail: `Reserved ${cpu || "?"} vCPU / ${memoryGB || "?"} GB RAM on ${node} (${cluster})`,
-    fields: { cluster, node },
-  };
-}
-
-export async function reserveStorage({ diskGB, hostname } = {}) {
-  if (isSystemConfigured("STORAGE")) {
-    const data = await callSystem("storage", "volume.reserve", { diskGB, hostname });
-    const reference = pick(data, ["reference", "volumeId", "volume", "id"]);
-    return {
-      system: data.system || "Storage",
-      reference,
-      detail: pick(data, ["detail", "message"]) || `Reserved ${diskGB ?? "?"} GB volume ${reference || ""}`.trim(),
-      fields: data.fields || { volumeId: reference, datastore: pick(data, ["datastore"]) },
-    };
-  }
-  const volumeId = ref("vol-", 8);
-  const datastore = `ds-san-prod-${String(rand(1, 12)).padStart(2, "0")}`;
-  const size = Number(diskGB) || 50;
-  recordSimulated("storage", "volume.reserve", volumeId);
-  return {
-    system: "SAN Storage Orchestrator",
-    reference: volumeId,
-    detail: `Reserved ${size} GB volume ${volumeId} on ${datastore} (tier: gold)`,
-    fields: { volumeId, datastore },
-  };
-}
-
-export async function requestFirewallAccess({ hostname, ip } = {}) {
-  if (isSystemConfigured("FIREWALL")) {
-    const data = await callSystem("firewall", "access.request", { hostname, ip });
-    const reference = pick(data, ["reference", "changeId", "change", "id"]);
-    return {
-      system: data.system || "Firewall",
-      reference,
-      detail: pick(data, ["detail", "message"]) || `Change ${reference || ""} raised for ${ip || hostname || "host"}`.trim(),
-      fields: data.fields || { changeId: reference, rules: data.rules },
-    };
-  }
-  const changeId = ref("CHG", 7);
-  const rules = ["tcp/22 (SSH) from mgmt-zone", "tcp/443 (HTTPS) from app-zone", "tcp/8443 to monitoring"];
-  recordSimulated("firewall", "access.request", changeId);
-  return {
-    system: "Firewall Change System",
-    reference: changeId,
-    detail: `${changeId} approved — ${rules.length} rules opened for ${ip || hostname || "host"}`,
-    fields: { changeId, rules },
-  };
-}
-
-export async function createDnsRecord({ hostname, ip } = {}) {
-  if (isSystemConfigured("DNS")) {
-    const data = await callSystem("dns", "record.create", { hostname, ip });
-    const fqdn = pick(data, ["fqdn", "name", "record"]);
-    return {
-      system: data.system || "DNS",
-      reference: fqdn,
-      detail: pick(data, ["detail", "message"]) || `Created A record ${fqdn || hostname} -> ${ip || "pending"}`,
-      fields: { fqdn },
-    };
-  }
-  const fqdn = `${(hostname || "host").toLowerCase()}.cpc.internal`;
-  recordSimulated("dns", "record.create", fqdn);
-  return {
-    system: "Internal DNS",
-    reference: fqdn,
-    detail: `Created A record ${fqdn} -> ${ip || "pending"}`,
-    fields: { fqdn },
-  };
-}
-
-export async function registerCmdbItem({ hostname, ip, requestedBy } = {}) {
-  if (isSystemConfigured("CMDB")) {
-    const data = await callSystem("cmdb", "ci.register", { hostname, ip, owner: requestedBy });
-    const reference = pick(data, ["reference", "ciId", "sysId", "sys_id", "id"]);
-    return {
-      system: data.system || "CMDB",
-      reference,
-      detail: pick(data, ["detail", "message"]) || `Registered CI ${reference || ""} for ${hostname}`.trim(),
-      fields: data.fields || { ciId: reference },
-    };
-  }
-  const ciId = ref("CI", 8);
-  recordSimulated("cmdb", "ci.register", ciId);
-  return {
-    system: "CMDB",
-    reference: ciId,
-    detail: `Registered CI ${ciId} (${hostname}) — owner ${requestedBy || "unknown"}`,
-    fields: { ciId },
-  };
-}
-
-export async function finalizeHandover({ hostname, requestNumber } = {}) {
-  if (isSystemConfigured("ITSM")) {
-    const data = await callSystem("itsm", "request.close", { hostname, requestNumber });
-    const reference = pick(data, ["reference", "task", "number", "id"]);
-    return {
-      system: data.system || "ITSM",
-      reference,
-      detail: pick(data, ["detail", "message"]) || `Handover ${reference || ""} completed`.trim(),
-      fields: data.fields || { task: reference },
-    };
-  }
-  const ticket = ref("TASK", 7);
-  recordSimulated("itsm", "request.close", ticket);
-  return {
-    system: "ServiceNow ITSM",
-    reference: ticket,
-    detail: `Handover task ${ticket} completed — workspace ready`,
-    fields: { task: ticket },
-  };
-}
-
-// Dispatch table used by the provisioner to invoke a step's API by name.
-export const INTERNAL_APIS = {
-  openServiceRequest,
-  allocateIpAddress,
-  reserveCompute,
-  reserveStorage,
-  requestFirewallAccess,
-  createDnsRecord,
-  registerCmdbItem,
-  finalizeHandover,
-};

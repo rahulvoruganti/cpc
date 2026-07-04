@@ -1,8 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  getVmTemplates, getContainerTemplates, getStacks, getEnvironments,
+  getVmTemplates, getContainerTemplates, getStacks, getEnvironments, getTemplateDefaults,
   provisionVm, provisionInternal, provisionContainer, provisionStack,
 } from "../api/client.js";
+
+// Look up a template's default packages (case-insensitive by name, then id).
+function defaultPackagesFor(item, defaultsMap) {
+  if (!item || !defaultsMap) return [];
+  const keys = [item.name, item.id].filter(Boolean).map((k) => String(k).toLowerCase());
+  const entry = Object.entries(defaultsMap).find(([k]) => keys.includes(k.toLowerCase()));
+  return Array.isArray(entry?.[1]) ? entry[1] : [];
+}
 
 const KIND_LABELS = {
   vm: "Virtual Machine",
@@ -44,11 +52,6 @@ const PACKAGE_OPTIONS = [
   "vim",
   "yarn",
 ];
-
-// Always installed on every server (the Colruyt security baseline). Shown
-// read-only in the form; the backend installs these in the "Security baseline"
-// step. Keep in sync with backend deploymentSteps.DEFAULT_AGENTS.
-const DEFAULT_AGENTS = ["Microsoft Defender for Endpoint", "OMI Client", "Guardicore Agent"];
 
 function SearchablePackageDropdown({
   label,
@@ -119,8 +122,9 @@ function SearchablePackageDropdown({
   );
 }
 
-function ProvisionForm({ selected, environments = [], onSubmit, busy, onClose }) {
+function ProvisionForm({ selected, environments = [], templateDefaults = {}, onSubmit, busy, onClose }) {
   const item = selected.item;
+  const defaultPackages = defaultPackagesFor(item, templateDefaults);
   const isInternal = item.provider === "internal";
   const isStack = selected.kind === "stack";
   const isContainer = selected.kind === "container";
@@ -269,14 +273,16 @@ function ProvisionForm({ selected, environments = [], onSubmit, busy, onClose })
 
           {!isInternal && (
             <>
-              <div className="field provision-packages-field">
-                <label>Default applications <span className="muted">— always installed (security baseline)</span></label>
-                <div className="provision-packages-list">
-                  {DEFAULT_AGENTS.map((a) => (
-                    <span key={a} className="provision-inline-kind provision-inline-kind-fixed">🛡 {a}</span>
-                  ))}
+              {defaultPackages.length > 0 && (
+                <div className="field provision-packages-field">
+                  <label>Default applications for this stack</label>
+                  <div className="provision-packages-list">
+                    {defaultPackages.map((p) => (
+                      <span key={`${p.letter}-${p.name}`} className="provision-inline-kind provision-inline-kind-fixed">{p.name}</span>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <SearchablePackageDropdown
                 label="Required packages"
@@ -313,6 +319,7 @@ export default function Provision() {
   const [containerTemplates, setContainerTemplates] = useState([]);
   const [stacks, setStacks] = useState([]);
   const [environments, setEnvironments] = useState([]);
+  const [templateDefaults, setTemplateDefaults] = useState({});
   const [kindFilter, setKindFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(20);
@@ -326,6 +333,7 @@ export default function Provision() {
     getContainerTemplates().then(setContainerTemplates).catch(() => {});
     getStacks().then(setStacks).catch(() => {});
     getEnvironments().then(setEnvironments).catch(() => {});
+    getTemplateDefaults().then(setTemplateDefaults).catch(() => {});
   }, []);
 
   const rows = useMemo(() => {
@@ -530,7 +538,7 @@ export default function Provision() {
       {selected && (
         <div className="provision-modal-backdrop" onClick={() => setSelected(null)}>
           <div className="provision-modal-shell" onClick={(e) => e.stopPropagation()}>
-            <ProvisionForm selected={selected} environments={environments} busy={busy} onSubmit={submit} onClose={() => setSelected(null)} />
+            <ProvisionForm selected={selected} environments={environments} templateDefaults={templateDefaults} busy={busy} onSubmit={submit} onClose={() => setSelected(null)} />
           </div>
         </div>
       )}

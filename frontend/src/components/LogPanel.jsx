@@ -46,6 +46,15 @@ function jobTitle(job) {
     || `job ${job.id}`;
 }
 
+// Runtime line for a workflow step — names the team/API being called and its
+// outcome. `via` is the team/API/playbook (e.g. "Linux team API").
+function viaStatus(state, via) {
+  if (state === "active") return `Calling ${via}…`;
+  if (state === "done") return `Success · ${via}`;
+  if (state === "failed" || state === "error") return `Failed · ${via}`;
+  return via;
+}
+
 function StepList({ job }) {
   // Workflow jobs carry a structured, per-step tracker — render each step with
   // its impactful statement, an ETA (pending/active) and time taken (done).
@@ -84,6 +93,7 @@ function StepList({ job }) {
                 </span>
                 <span className="wf-track-body">
                   <span className="wf-track-label">{statement || s.label}</span>
+                  {s.via && <span className="wf-track-via">{viaStatus(state, s.via)}</span>}
                   {s.reference && <span className="wf-track-ref mono">{s.reference}</span>}
                 </span>
                 {timing && <span className="wf-track-time mono">{timing}</span>}

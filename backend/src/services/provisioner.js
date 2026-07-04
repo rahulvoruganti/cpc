@@ -9,7 +9,7 @@ import { waitForPort } from "./portProbe.js";
 import { generatePassword } from "./passwordGen.js";
 import { runSsh } from "./sshRunner.js";
 import { userSetupCommands, packageInstallCommand, aiTroubleshoot } from "./aiOps.js";
-import { INTERNAL_APIS, isSystemConfigured } from "./internalProvisioningApis.js";
+import { executeStep, isSystemConfigured } from "./internalProvisioningApis.js";
 import { findInternalTemplate } from "../config/internalCatalog.js";
 import { createStepTracker, DEFAULT_AGENTS } from "./deploymentSteps.js";
 
@@ -269,10 +269,12 @@ export async function runInternalJob(jobId, payload) {
     const tpl = findInternalTemplate(templateId);
     if (!tpl) throw new Error(`Unknown internal template: ${templateId}`);
 
-    // A structured, per-step tracker the UI renders as circles that go green as
-    // each step finishes. Kept on the job alongside the streamed log messages.
+    // A structured, per-step tracker the UI renders (grouped by stage) as
+    // circles that go green as each step finishes. Kept on the job alongside
+    // the streamed log messages.
     const steps = tpl.workflow.map((s) => ({
-      key: s.key, label: s.label, state: "pending", system: null, reference: null, detail: null,
+      key: s.key, stage: s.stage, label: s.label, via: s.via,
+      state: "pending", system: null, reference: null, detail: null,
     }));
     const snapshot = () => steps.map((s) => ({ ...s }));
 
@@ -280,39 +282,40 @@ export async function runInternalJob(jobId, payload) {
       status: "provisioning",
       message: `Starting the internal provisioning workflow for "${hostname}"…`,
       steps: snapshot(),
+      stages: tpl.stages || null,
     });
 
-    // Context accumulates each API's returned fields so later steps (firewall,
-    // DNS, CMDB) can reference the IP allocated earlier, etc.
+    // Context accumulates each step's returned fields so later steps can
+    // reference earlier results (datacenter, reserved IP, created VMID, …).
     const ctx = { hostname, cpu, memoryGB, diskGB, requestedBy: payload.requestedBy };
     const workflow = [];
 
     for (let i = 0; i < tpl.workflow.length; i++) {
       const step = tpl.workflow[i];
-      const api = INTERNAL_APIS[step.api];
-      if (!api) throw new Error(`No handler configured for workflow step "${step.api}"`);
 
       // A configured system is called for real (its own latency provides the
       // timing); an unconfigured one is simulated — add a short pause so the
       // monitor still streams each step like a real integration.
-      const simulated = !step.system || !isSystemConfigured(step.system);
+      const simulated = !isSystemConfigured(step.system);
       steps[i].state = "active";
-      updateJob(jobId, { status: "provisioning", message: `${step.label}…`, steps: snapshot() });
+      // While waiting: "Calling <team/API>…" for the step.
+      updateJob(jobId, { status: "provisioning", message: `${step.label} — calling ${step.via}…`, steps: snapshot() });
       if (simulated) await sleep(1500);
 
       let res;
       try {
-        res = await api(ctx);
+        res = await executeStep(step, ctx);
       } catch (err) {
         steps[i] = { ...steps[i], state: "error", detail: err.message };
-        updateJob(jobId, { steps: snapshot() });
+        updateJob(jobId, { message: `${step.label} — ${step.via} call failed`, steps: snapshot() });
         throw err;
       }
-      Object.assign(ctx, res.fields || {}); // e.g. ip, gateway, fqdn for later steps
+      Object.assign(ctx, res.fields || {}); // carry forward ip, vmid, datacenter, …
 
       steps[i] = { ...steps[i], state: "done", system: res.system, reference: res.reference, detail: res.detail };
-      workflow.push({ step: step.label, system: res.system, reference: res.reference, detail: res.detail });
-      updateJob(jobId, { message: `${step.label} — done${res.reference ? ` · ${res.reference}` : ""}`, steps: snapshot() });
+      workflow.push({ step: step.label, stage: step.stage, system: res.system, reference: res.reference, detail: res.detail });
+      // Once done: "<team/API> call succeeded" (with the reference it returned).
+      updateJob(jobId, { message: `${step.label} — ${step.via} call succeeded${res.reference ? ` · ${res.reference}` : ""}`, steps: snapshot() });
     }
 
     const resource = {

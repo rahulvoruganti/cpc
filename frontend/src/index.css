@@ -1961,6 +1961,27 @@ a { color: var(--accent); text-decoration: none; }
 .wf-track-label { font-size: 13px; color: var(--ink); }
 .wf-track-pending .wf-track-label { color: var(--ink-3); }
 .wf-track-ref { font-size: 11px; color: var(--ink-3); word-break: break-word; }
+.wf-track-via { font-size: 11.5px; color: var(--ink-2); }
+.wf-track-active .wf-track-via { color: var(--accent); font-weight: 600; }
+.wf-track-done .wf-track-via { color: var(--ok); }
+.wf-track-failed .wf-track-via,
+.wf-track-error .wf-track-via { color: var(--danger); font-weight: 600; }
+
+/* Stage grouping for the internal workflow */
+.wf-stages { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.wf-stage {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px 6px;
+  background: var(--surface-2);
+}
+.wf-stage-active { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 8%, transparent); }
+.wf-stage-done { border-color: color-mix(in srgb, var(--ok) 40%, var(--line)); }
+.wf-stage-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2px; }
+.wf-stage-name { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-2); }
+.wf-stage-count { font-size: 11px; color: var(--ink-3); }
+.wf-stage-done .wf-stage-name { color: var(--ok); }
+.wf-stage .wf-track { margin: 0; }
 
 /* Current / last-ran deployment card */
 .dep-current {

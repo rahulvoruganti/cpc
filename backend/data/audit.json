@@ -2712,6 +2712,398 @@
       "detail": {
         "osName": "Alpine"
       }
+    },
+    {
+      "id": "ND6qMBvf9c",
+      "timestamp": "2026-07-04T05:51:53.641Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "mapping.template.save",
+      "target": "VMID 116",
+      "status": "success",
+      "detail": {
+        "osName": "MEAN"
+      }
+    },
+    {
+      "id": "1DDMy6OZLC",
+      "timestamp": "2026-07-04T06:00:19.034Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "internal.request",
+      "target": "test",
+      "status": "success",
+      "detail": {
+        "templateId": "internal-linux",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "requestId": "J7LWM2Tqv_Bg",
+        "jobId": "d5YE-9aIHW",
+        "status": "provisioning"
+      }
+    },
+    {
+      "id": "YfdhbYEWxA",
+      "timestamp": "2026-07-04T06:00:20.545Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX.datacenter",
+      "target": "DC Ghislenghien",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "8vTeKj4fPL",
+      "timestamp": "2026-07-04T06:00:22.086Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX.server-street",
+      "target": "STR-07",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "TTNJriI1Lf",
+      "timestamp": "2026-07-04T06:00:23.639Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX.iso-template",
+      "target": "rhel9-std-2024.03",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "a2xYdjZ_Su",
+      "timestamp": "2026-07-04T06:00:25.200Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.NETWORK.ip",
+      "target": "10.27.230.160",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "jBRSMtgB_C",
+      "timestamp": "2026-07-04T06:00:26.758Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.COMPUTE.vm-create",
+      "target": "27327",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "bYA6G9khDh",
+      "timestamp": "2026-07-04T06:00:28.308Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.omi",
+      "target": "AAP-1839949",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "rsHcGIuxXC",
+      "timestamp": "2026-07-04T06:00:29.867Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.ppdm",
+      "target": "AAP-7917825",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "i_4hTbbIFy",
+      "timestamp": "2026-07-04T06:00:31.418Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.SERVICENOW_ANSIBLE.cmdb",
+      "target": "CI00178246",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "A74YhedDe6",
+      "timestamp": "2026-07-04T06:00:32.974Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.guardicore",
+      "target": "AAP-5178001",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "abHCIvGeDK",
+      "timestamp": "2026-07-04T06:00:34.530Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.defender",
+      "target": "AAP-2910329",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "kr95i7P8E0",
+      "timestamp": "2026-07-04T06:00:36.077Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.COMPUTE.grant-perms",
+      "target": "PERM-989567",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "ArhI5D_kWn",
+      "timestamp": "2026-07-04T06:09:57.161Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "internal.request",
+      "target": "prakashtest",
+      "status": "success",
+      "detail": {
+        "templateId": "internal-linux",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "requestId": "S4LFDKpAhAOB",
+        "jobId": "vzoqM2FhkB",
+        "status": "provisioning"
+      }
+    },
+    {
+      "id": "ZmVyQzT77W",
+      "timestamp": "2026-07-04T06:09:58.673Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX.datacenter",
+      "target": "DC Ghislenghien",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "yRfXOPYqFy",
+      "timestamp": "2026-07-04T06:10:00.220Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX.server-street",
+      "target": "STR-11",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "d3RaXYoFAT",
+      "timestamp": "2026-07-04T06:10:01.794Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX.iso-template",
+      "target": "rhel9-std-2026.04",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "L00QcstIcj",
+      "timestamp": "2026-07-04T06:10:03.371Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.NETWORK.ip",
+      "target": "10.50.225.68",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "QbjntB4Wv4",
+      "timestamp": "2026-07-04T06:10:04.906Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.COMPUTE.vm-create",
+      "target": "41113",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "T4sGUTEEOu",
+      "timestamp": "2026-07-04T06:10:06.454Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.omi",
+      "target": "AAP-8523866",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "id9YmKpINi",
+      "timestamp": "2026-07-04T06:10:07.991Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.ppdm",
+      "target": "AAP-9911958",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "AAPMUzcJRY",
+      "timestamp": "2026-07-04T06:10:09.533Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.SERVICENOW_ANSIBLE.cmdb",
+      "target": "CI12778978",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "nKNgAJ94Di",
+      "timestamp": "2026-07-04T06:10:11.085Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.guardicore",
+      "target": "AAP-7920510",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "KO-068F2SB",
+      "timestamp": "2026-07-04T06:10:12.629Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.LINUX_ANSIBLE.defender",
+      "target": "AAP-5759979",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "Y8Hkq27cRM",
+      "timestamp": "2026-07-04T06:10:14.179Z",
+      "actor": {
+        "username": "system",
+        "role": "system"
+      },
+      "action": "internal.COMPUTE.grant-perms",
+      "target": "PERM-801316",
+      "status": "success",
+      "detail": {
+        "simulated": true
+      }
+    },
+    {
+      "id": "eYl0bLin-Z",
+      "timestamp": "2026-07-04T06:17:48.369Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "vm.request",
+      "target": "prakash",
+      "status": "success",
+      "detail": {
+        "templateId": "tpl-116",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "requestId": "Csk3-PACLBnW",
+        "jobId": "iU3yCg3_qp",
+        "status": "provisioning"
+      }
     }
   ]
 }

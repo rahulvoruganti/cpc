@@ -13,6 +13,19 @@ function stepDotClass(status) {
   return "log-dot-active";
 }
 
+// Group workflow steps into their stages (preserving order) and stamp each
+// step with a global step number for the dot.
+function groupByStage(steps) {
+  const groups = [];
+  steps.forEach((s, i) => {
+    const step = { ...s, n: i + 1 };
+    const last = groups[groups.length - 1];
+    if (last && last.stage === (s.stage || "")) last.steps.push(step);
+    else groups.push({ stage: s.stage || "", steps: [step] });
+  });
+  return groups;
+}
+
 export default function JobStatus({ jobId, onClose }) {
   const [job, setJob] = useState(null);
   const [connectTarget, setConnectTarget] = useState(null);
@@ -54,25 +67,48 @@ export default function JobStatus({ jobId, onClose }) {
         <p style={{ margin: "0 0 12px", color: "var(--ink-2)" }}>{job.message}</p>
 
         {job.steps?.length > 0 ? (
-          <ol className="wf-track" style={{ marginBottom: 12 }}>
-            {job.steps.map((s, i) => {
-              const state = job.status === "failed" && s.state === "active" ? "failed" : s.state;
+          <div className="wf-stages" style={{ marginBottom: 12 }}>
+            {groupByStage(job.steps).map((group, gi) => {
+              const total = group.steps.length;
+              const doneCount = group.steps.filter((s) => s.state === "done").length;
+              const anyActive = group.steps.some((s) => s.state === "active" || s.state === "error");
+              const stageState = doneCount === total ? "done" : (anyActive || doneCount > 0) ? "active" : "pending";
               return (
-                <li key={s.key || i} className={`wf-track-step wf-track-${state}`}>
-                  <span className="wf-track-dot">
-                    {state === "done" ? "✓"
-                      : state === "failed" || state === "error" ? "✕"
-                      : state === "skipped" ? "–"
-                      : i + 1}
-                  </span>
-                  <span className="wf-track-body">
-                    <span className="wf-track-label">{s.label}</span>
-                    {s.reference && <span className="wf-track-ref mono">{s.reference}</span>}
-                  </span>
-                </li>
+                <div key={group.stage || gi} className={`wf-stage wf-stage-${stageState}`}>
+                  <div className="wf-stage-head">
+                    <span className="wf-stage-name">{group.stage || `Stage ${gi + 1}`}</span>
+                    <span className="wf-stage-count mono">{doneCount}/{total}</span>
+                  </div>
+                  <ol className="wf-track">
+                    {group.steps.map((s) => {
+                      const state = job.status === "failed" && s.state === "active" ? "failed" : s.state;
+                      return (
+                        <li key={s.key} className={`wf-track-step wf-track-${state}`}>
+                          <span className="wf-track-dot">
+                            {state === "done" ? "✓"
+                              : state === "failed" || state === "error" ? "✕"
+                              : s.n}
+                          </span>
+                          <span className="wf-track-body">
+                            <span className="wf-track-label">{s.label}</span>
+                            {s.via && (
+                              <span className="wf-track-via">
+                                {state === "active" ? `Calling ${s.via}…`
+                                  : state === "done" ? `Success · ${s.via}`
+                                  : state === "failed" || state === "error" ? `Failed · ${s.via}`
+                                  : s.via}
+                              </span>
+                            )}
+                            {s.reference && <span className="wf-track-ref mono">{s.reference}</span>}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
               );
             })}
-          </ol>
+          </div>
         ) : job.logs?.length > 0 ? (
           <ol className="log-steps" style={{ marginBottom: 12 }}>
             {job.logs.map((s, i) => (
