@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { approveProvisionRequest, getProvisionRequests } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import RejectRequestModal from "../components/RejectRequestModal.jsx";
@@ -15,6 +16,7 @@ function statusClass(status = "") {
 
 export default function Requests() {
   const { isAdmin } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [items, setItems] = useState([]);
   const [query, setQuery] = useState("");
   const [rejectTarget, setRejectTarget] = useState(null);  // request being rejected
@@ -28,6 +30,18 @@ export default function Requests() {
   useEffect(() => {
     load().catch(() => {});
   }, []);
+
+  // Deep-link from an approval notification: /requests?review=<id> opens the
+  // review dialog for a pending request (admins only).
+  useEffect(() => {
+    const reviewId = searchParams.get("review");
+    if (!reviewId || !isAdmin || items.length === 0) return;
+    const target = items.find((r) => r.id === reviewId && r.status === "pending_approval");
+    if (target) setViewTarget(target);
+    const next = new URLSearchParams(searchParams);
+    next.delete("review");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, items, isAdmin]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

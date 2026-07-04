@@ -3,6 +3,7 @@ import {
   getMappings, saveTemplateMapping, deleteTemplateMapping,
   saveNetworkMapping, deleteNetworkMapping,
 } from "../api/client.js";
+import { useDialog } from "../components/DialogProvider.jsx";
 
 const PKG_MANAGERS = ["apt", "yum", "dnf", "apk", "zypper", "powershell", "choco", "brew"];
 
@@ -35,6 +36,7 @@ function CloudInitState({ file, valid }) {
 }
 
 function TemplateRow({ row, snippets, onSaved, onError }) {
+  const { confirm } = useDialog();
   const [editing, setEditing] = useState(false);
   const [info, setInfo] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -69,7 +71,7 @@ function TemplateRow({ row, snippets, onSaved, onError }) {
   };
 
   const remove = async () => {
-    if (!confirm(`Clear mapping for ${row.templateName} (VMID ${row.vmid})?`)) return;
+    if (!(await confirm({ title: "Clear mapping", message: `Clear mapping for ${row.templateName} (VMID ${row.vmid})?`, confirmLabel: "Clear", tone: "danger" }))) return;
     try { await deleteTemplateMapping(row.vmid); onSaved(); }
     catch (e) { onError(e.response?.data?.error || e.message); }
   };

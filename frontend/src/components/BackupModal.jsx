@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getBackupConfig, saveBackupConfig, deleteBackupConfig, runBackupNow } from "../api/client.js";
+import { useDialog } from "./DialogProvider.jsx";
 
 const DAYS = [
   { id: "mon", label: "Monday" }, { id: "tue", label: "Tuesday" }, { id: "wed", label: "Wednesday" },
@@ -24,6 +25,7 @@ function parseSchedule(schedule) {
 
 export default function BackupModal({ resource, onClose }) {
   const { type, vmid, name } = resource;
+  const { confirm } = useDialog();
 
   const [storages, setStorages] = useState([]);
   const [form, setForm] = useState({
@@ -85,7 +87,7 @@ export default function BackupModal({ resource, onClose }) {
   };
 
   const remove = async () => {
-    if (!confirm("Remove the scheduled backup for this resource?")) return;
+    if (!(await confirm({ title: "Remove backup schedule", message: "Remove the scheduled backup for this resource?", confirmLabel: "Remove", tone: "danger" }))) return;
     setBusy("remove"); setError(""); setNotice("");
     try {
       await deleteBackupConfig(type, vmid);

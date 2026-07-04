@@ -92,9 +92,16 @@ export async function computeRequestImpact(request) {
   const p = request?.payload || {};
   const count = unitCountFor(request);
 
-  const reqCpu = Number(p.cpu || 0) * count;
-  const reqMemBytes = Number(p.memoryGB || 0) * GB * count;
-  const reqDiskBytes = Number(p.diskGB || 0) * GB * count;
+  // For a resize the node already runs the guest, so the added footprint is the
+  // delta from its current specs (can be negative for a downsize). New builds
+  // add their full requested size.
+  const isResize = request?.kind === "resize";
+  const cur = isResize ? (p.current || {}) : {};
+  const delta = (target, current) => Number(target || 0) - (isResize ? Number(current || 0) : 0);
+
+  const reqCpu = delta(p.cpu, cur.cpu) * count;
+  const reqMemBytes = delta(p.memoryGB, cur.memoryGB) * GB * count;
+  const reqDiskBytes = delta(p.diskGB, cur.diskGB) * GB * count;
 
   const resources = {
     cpu: buildResource("CPU", usage.cpu, reqCpu),

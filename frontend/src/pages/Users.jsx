@@ -3,9 +3,11 @@ import {
   getUsers, createUser, updateUserRole, deleteUser,
   getGroups, createGroup, deleteGroup, addGroupMember, removeGroupMember,
 } from "../api/client.js";
+import { useDialog } from "../components/DialogProvider.jsx";
 
 // --- Groups management ---
 function GroupsPanel({ users }) {
+  const { confirm, alert } = useDialog();
   const [groups, setGroups] = useState([]);
   const [error, setError] = useState("");
   const [newName, setNewName] = useState("");
@@ -25,19 +27,19 @@ function GroupsPanel({ users }) {
   };
 
   const remove = async (name) => {
-    if (!confirm(`Delete group "${name}"?`)) return;
-    try { await deleteGroup(name); load(); } catch (e) { alert(e.response?.data?.error || e.message); }
+    if (!(await confirm({ title: "Delete group", message: `Delete group "${name}"?`, confirmLabel: "Delete", tone: "danger" }))) return;
+    try { await deleteGroup(name); load(); } catch (e) { alert({ title: "Couldn't delete group", message: e.response?.data?.error || e.message, tone: "danger" }); }
   };
 
   const addMember = async (name) => {
     const username = memberPick[name];
     if (!username) return;
     try { await addGroupMember(name, username); setMemberPick((m) => ({ ...m, [name]: "" })); load(); }
-    catch (e) { alert(e.response?.data?.error || e.message); }
+    catch (e) { alert({ title: "Couldn't add member", message: e.response?.data?.error || e.message, tone: "danger" }); }
   };
 
   const removeMember = async (name, username) => {
-    try { await removeGroupMember(name, username); load(); } catch (e) { alert(e.response?.data?.error || e.message); }
+    try { await removeGroupMember(name, username); load(); } catch (e) { alert({ title: "Couldn't remove member", message: e.response?.data?.error || e.message, tone: "danger" }); }
   };
 
   return (
@@ -95,6 +97,7 @@ function GroupsPanel({ users }) {
 }
 
 export default function Users({ embedded = false }) {
+  const { confirm, alert } = useDialog();
   const [users, setUsers] = useState([]);
   const [error, setError] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -125,13 +128,13 @@ export default function Users({ embedded = false }) {
   const changeRole = async (u) => {
     const next = u.role === "admin" ? "user" : "admin";
     try { await updateUserRole(u.id, next); load(); }
-    catch (e) { alert(e.response?.data?.error || e.message); }
+    catch (e) { alert({ title: "Couldn't change role", message: e.response?.data?.error || e.message, tone: "danger" }); }
   };
 
   const remove = async (u) => {
-    if (!confirm(`Delete user "${u.username}"?`)) return;
+    if (!(await confirm({ title: "Delete user", message: `Delete user "${u.username}"?`, confirmLabel: "Delete", tone: "danger" }))) return;
     try { await deleteUser(u.id); load(); }
-    catch (e) { alert(e.response?.data?.error || e.message); }
+    catch (e) { alert({ title: "Couldn't delete user", message: e.response?.data?.error || e.message, tone: "danger" }); }
   };
 
   return (

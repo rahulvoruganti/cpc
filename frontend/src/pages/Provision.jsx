@@ -4,6 +4,7 @@ import {
   getCostRates, provisionVm, provisionInternal, provisionContainer, provisionStack,
   getIacTemplate,
 } from "../api/client.js";
+import { useDialog } from "../components/DialogProvider.jsx";
 
 const IAC_TOOL_OPTIONS = [
   { id: "terraform", label: "Terraform" },
@@ -16,6 +17,7 @@ const IAC_TOOL_OPTIONS = [
 // downloaded file targets the CPC API and authenticates with an API token
 // (generated from the account menu).
 function IacExport({ kind, id }) {
+  const { alert } = useDialog();
   const [tool, setTool] = useState("terraform");
   const [busy, setBusy] = useState(false);
 
@@ -33,7 +35,7 @@ function IacExport({ kind, id }) {
       a.remove();
       URL.revokeObjectURL(url);
     } catch (e) {
-      alert(e.response?.data?.error || e.message);
+      alert({ title: "Download failed", message: e.response?.data?.error || e.message, tone: "danger" });
     } finally {
       setBusy(false);
     }
@@ -474,6 +476,7 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, cos
 }
 
 export default function Provision({ embedded = false }) {
+  const { alert } = useDialog();
   const [vmTemplates, setVmTemplates] = useState([]);
   const [containerTemplates, setContainerTemplates] = useState([]);
   const [stacks, setStacks] = useState([]);
@@ -611,7 +614,7 @@ export default function Provision({ embedded = false }) {
         window.dispatchEvent(new CustomEvent("cpc:open-deployment-monitor", { detail: { requestId: result.request.id } }));
       }
     } catch (e) {
-      alert(e.response?.data?.error || e.message);
+      alert({ title: "Provisioning failed", message: e.response?.data?.error || e.message, tone: "danger" });
     } finally {
       setBusy(false);
     }

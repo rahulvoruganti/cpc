@@ -3,6 +3,7 @@ import {
   getK8sContext, getK8sNamespaces, createK8sNamespace, deleteK8sNamespace,
   getK8sPods, getK8sDeployments, createK8sDeployment, deleteK8sDeployment,
 } from "../api/client.js";
+import { useDialog } from "../components/DialogProvider.jsx";
 
 function phaseClass(phase) {
   const p = (phase || "").toLowerCase();
@@ -219,6 +220,7 @@ function DeployModal({ namespace, onClose, onDeployed }) {
 
 // ---- Namespace detail (deployments + pods) ----
 function NamespaceDetail({ ns, onBack }) {
+  const { confirm, alert } = useDialog();
   const [deployments, setDeployments] = useState([]);
   const [pods, setPods] = useState([]);
   const [error, setError] = useState("");
@@ -236,9 +238,9 @@ function NamespaceDetail({ ns, onBack }) {
   useEffect(() => { load(); }, [ns.name]);
 
   const removeDeployment = async (name) => {
-    if (!confirm(`Delete workload "${name}" and its pods?`)) return;
+    if (!(await confirm({ title: "Delete workload", message: `Delete workload "${name}" and its pods?`, confirmLabel: "Delete", tone: "danger" }))) return;
     try { await deleteK8sDeployment(ns.name, name); load(); }
-    catch (e) { alert(e.response?.data?.error || e.message); }
+    catch (e) { alert({ title: "Couldn't delete workload", message: e.response?.data?.error || e.message, tone: "danger" }); }
   };
 
   return (
@@ -314,6 +316,7 @@ function NamespaceDetail({ ns, onBack }) {
 }
 
 export default function ContainerHosting({ embedded = false }) {
+  const { confirm, alert } = useDialog();
   const [context, setContext] = useState({ teams: [], envs: [], isAdmin: false });
   const [namespaces, setNamespaces] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -338,9 +341,9 @@ export default function ContainerHosting({ embedded = false }) {
     const msg = force
       ? `Force terminate namespace "${name}"? This clears finalizers and removes it even if it's stuck — cleanup guarantees are dropped.`
       : `Delete namespace "${name}"? This removes everything inside it.`;
-    if (!confirm(msg)) return;
+    if (!(await confirm({ title: force ? "Force terminate namespace" : "Delete namespace", message: msg, confirmLabel: force ? "Force terminate" : "Delete", tone: "danger" }))) return;
     try { await deleteK8sNamespace(name, force); loadNamespaces(); }
-    catch (e) { alert(e.response?.data?.error || e.message); }
+    catch (e) { alert({ title: "Couldn't delete namespace", message: e.response?.data?.error || e.message, tone: "danger" }); }
   };
 
   return (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { listPats, createPat, revokePat } from "../api/client.js";
+import { useDialog } from "./DialogProvider.jsx";
 
 const EXPIRY_OPTIONS = [
   { value: 30, label: "30 days" },
@@ -16,6 +17,7 @@ function fmtDate(ts) {
 // Personal Access Token management, shown inside the account menu. Lets a user
 // mint a token for Terraform/Ansible/CLI, see it once, and revoke old ones.
 export default function ApiTokensPanel() {
+  const { confirm } = useDialog();
   const [pats, setPats] = useState([]);
   const [name, setName] = useState("");
   const [expiresInDays, setExpiresInDays] = useState(90);
@@ -46,7 +48,7 @@ export default function ApiTokensPanel() {
   };
 
   const revoke = async (id) => {
-    if (!confirm("Revoke this token? Any tool using it will stop working.")) return;
+    if (!(await confirm({ title: "Revoke token", message: "Revoke this token? Any tool using it will stop working.", confirmLabel: "Revoke", tone: "danger" }))) return;
     try {
       await revokePat(id);
       await load();

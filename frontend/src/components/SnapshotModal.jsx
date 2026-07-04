@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { getSnapshots, createSnapshot, rollbackSnapshot, deleteSnapshot } from "../api/client.js";
+import { useDialog } from "./DialogProvider.jsx";
 
 function fmtTime(ms) {
   if (!ms) return "—";
@@ -8,6 +9,7 @@ function fmtTime(ms) {
 
 export default function SnapshotModal({ resource, onClose, onChanged }) {
   const { type, vmid, name } = resource;
+  const { confirm } = useDialog();
   const canRam = type === "vm" && resource.status === "running";
 
   const [snaps, setSnaps] = useState([]);
@@ -42,7 +44,7 @@ export default function SnapshotModal({ resource, onClose, onChanged }) {
   };
 
   const restore = async (snap) => {
-    if (!confirm(`Restore "${name}" to snapshot "${snap}"? Current state since the snapshot will be lost.`)) return;
+    if (!(await confirm({ title: "Restore snapshot", message: `Restore "${name}" to snapshot "${snap}"? Current state since the snapshot will be lost.`, confirmLabel: "Restore", tone: "danger" }))) return;
     setBusy(`Restoring ${snap}`); setError("");
     try {
       await rollbackSnapshot(type, vmid, snap);
@@ -56,7 +58,7 @@ export default function SnapshotModal({ resource, onClose, onChanged }) {
   };
 
   const remove = async (snap) => {
-    if (!confirm(`Delete snapshot "${snap}"? This can't be undone.`)) return;
+    if (!(await confirm({ title: "Delete snapshot", message: `Delete snapshot "${snap}"? This can't be undone.`, confirmLabel: "Delete", tone: "danger" }))) return;
     setBusy(`Deleting ${snap}`); setError("");
     try {
       await deleteSnapshot(type, vmid, snap);
