@@ -563,7 +563,8 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
         onJobCreated?.(result.job.id);
         pollJobInChat(result.job.id);
       } else if (result?.request?.id) {
-        setMessages((m) => [...m, { role: "assistant", text: `Request ${result.request.id} submitted and waiting for admin approval.` }]);
+        setMessages((m) => [...m, { role: "assistant", text: `Request ${result.request.id} exceeds the size policy — it's on hold in the deployment monitor awaiting admin approval.` }]);
+        window.dispatchEvent(new CustomEvent("cpc:open-deployment-monitor", { detail: { requestId: result.request.id } }));
       }
     } catch (err) {
       const errText = err.response?.data?.error || err.message;

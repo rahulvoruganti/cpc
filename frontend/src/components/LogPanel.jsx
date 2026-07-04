@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getJobs } from "../api/client.js";
+import { getJobs, getProvisionRequests } from "../api/client.js";
 import DeploymentSummary from "./DeploymentSummary.jsx";
 
 // A deployment is finished (and can show a summary) once it's ready or failed.
@@ -7,6 +7,7 @@ const isDone = (job) => job.status === "ready" || job.status === "failed";
 
 // Terminal categories shown as minimized chips, side by side.
 const CATS = [
+  { key: "awaiting", label: "On hold", cls: "dep-cat-hold" },
   { key: "successful", label: "Successful", cls: "dep-cat-ok" },
   { key: "pending", label: "Pending", cls: "dep-cat-pending" },
   { key: "failed", label: "Failed", cls: "dep-cat-failed" },
@@ -30,7 +31,24 @@ function catDotClass(category) {
   if (category === "successful") return "log-dot-ok";
   if (category === "failed") return "log-dot-danger";
   if (category === "pending") return "log-dot-pending";
+  if (category === "awaiting") return "log-dot-pending";
   return "log-dot-active"; // running
+}
+
+// Turn pending-approval requests (which have no job yet) into monitor entries so
+// a high-config deployment shows up on hold until an admin approves it.
+function requestsToHoldEntries(requests) {
+  return (requests || [])
+    .filter((r) => r.status === "pending_approval")
+    .map((r) => ({
+      id: r.id,
+      type: r.kind || "vm",
+      category: "awaiting",
+      status: "awaiting_approval",
+      payload: r.payload,
+      createdAt: r.createdAt,
+      awaitingApproval: true,
+    }));
 }
 function stepDotClass(status) {
   if (status === "ready") return "log-dot-ok";
@@ -56,6 +74,19 @@ function viaStatus(state, via) {
 }
 
 function StepList({ job }) {
+  // Awaiting approval — no job/steps yet. Show a paused state instead.
+  if (job.awaitingApproval) {
+    return (
+      <div className="dep-hold">
+        <span className="dep-hold-badge">⏸ On hold — awaiting approval</span>
+        <p className="dep-hold-text">
+          This request exceeds the size policy, so provisioning is paused until an
+          admin approves it in the Requests tab. It starts automatically once approved.
+        </p>
+      </div>
+    );
+  }
+
   // Workflow jobs carry a structured, per-step tracker — render each step with
   // its impactful statement, an ETA (pending/active) and time taken (done).
   if (job.steps?.length) {
@@ -148,6 +179,7 @@ function JobRow({ job, expanded, onToggle, onSummary }) {
 export default function LogPanel() {
   const [open, setOpen] = useState(false);
   const [jobs, setJobs] = useState([]);
+  const [requests, setRequests] = useState([]);
   const [error, setError] = useState("");
   const [openCat, setOpenCat] = useState(null);  // expanded category key
   const [openJob, setOpenJob] = useState(null);  // expanded job id within a category
@@ -159,9 +191,13 @@ export default function LogPanel() {
     let timer;
     const poll = async () => {
       try {
-        const data = await getJobs();
+        const [jobData, reqData] = await Promise.all([
+          getJobs(),
+          getProvisionRequests().catch(() => []),
+        ]);
         if (cancelled) return;
-        setJobs(data);
+        setJobs(Array.isArray(jobData) ? jobData : []);
+        setRequests(Array.isArray(reqData) ? reqData : []);
         setError("");
       } catch (e) {
         if (!cancelled) setError(e.response?.data?.error || e.message);
@@ -182,6 +218,7 @@ export default function LogPanel() {
       setOpenCat(null);
       setOpenJob(null);
       getJobs().then((d) => setJobs(Array.isArray(d) ? d : [])).catch(() => {});
+      getProvisionRequests().then((d) => setRequests(Array.isArray(d) ? d : [])).catch(() => {});
     };
     window.addEventListener("cpc:open-deployment-monitor", onOpen);
     return () => window.removeEventListener("cpc:open-deployment-monitor", onOpen);
@@ -189,9 +226,18 @@ export default function LogPanel() {
 
   // jobs come newest-first from the API.
   const runningJobs = jobs.filter((j) => j.category === "running");
-  const current = runningJobs[0] || jobs[0] || null;
+  // Pending-approval requests surfaced as on-hold monitor entries.
+  const holdEntries = requestsToHoldEntries(requests);
+  // Anything that still needs attention (running or paused for approval), newest
+  // first — the newest becomes the highlighted "current" so a just-submitted
+  // high-config request pops straight into view on hold.
+  const activeEntries = [...holdEntries, ...runningJobs]
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
+  const current = activeEntries[0] || jobs[0] || null;
+  const pendingCount = runningJobs.length + holdEntries.length;
   const counts = jobs.reduce((acc, j) => { acc[j.category] = (acc[j.category] || 0) + 1; return acc; }, {});
-  const byCat = (key) => jobs.filter((j) => j.category === key);
+  counts.awaiting = holdEntries.length;
+  const byCat = (key) => (key === "awaiting" ? holdEntries : jobs.filter((j) => j.category === key));
 
   if (!open) {
     return (
@@ -199,15 +245,15 @@ export default function LogPanel() {
         className="log-launcher"
         onClick={() => setOpen(true)}
         aria-label="Open deployment monitor"
-        title={runningJobs.length > 0 ? `${runningJobs.length} running deployment(s)` : "Deployment monitor"}
+        title={pendingCount > 0 ? `${pendingCount} active deployment(s)` : "Deployment monitor"}
       >
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"
           strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M4 6h16M4 12h10M4 18h7" />
           <path d="M15.5 17l2 2 3.5-4" />
         </svg>
-        {runningJobs.length > 0 && (
-          <span className="log-launcher-count" aria-hidden="true">{runningJobs.length > 9 ? "9+" : runningJobs.length}</span>
+        {pendingCount > 0 && (
+          <span className="log-launcher-count" aria-hidden="true">{pendingCount > 9 ? "9+" : pendingCount}</span>
         )}
       </button>
     );
@@ -238,7 +284,7 @@ export default function LogPanel() {
       {(
         <div className="logpanel-body">
           {error && <div className="log-error">{error}</div>}
-          {!error && jobs.length === 0 && (
+          {!error && jobs.length === 0 && holdEntries.length === 0 && (
             <div className="log-empty">No deployments yet. Provisioning steps will stream here.</div>
           )}
 
@@ -266,12 +312,16 @@ export default function LogPanel() {
 
           {/* Current / last-ran deployment, shown in detail */}
           {!runningOnly && current && (
-            <div className={`dep-current ${current.category === "running" ? "dep-current-running" : ""}`}>
+            <div className={`dep-current ${current.category === "running" ? "dep-current-running" : ""} ${current.awaitingApproval ? "dep-current-hold" : ""}`}>
               <div className="dep-current-head">
                 <span className="dep-current-label">
-                  {current.category === "running" ? "Running now" : "Last deployment"}
+                  {current.category === "running" ? "Running now"
+                    : current.awaitingApproval ? "Awaiting approval"
+                    : "Last deployment"}
                 </span>
-                <span className={`log-status-chip ${catDotClass(current.category)}`}>{current.category}</span>
+                <span className={`log-status-chip ${catDotClass(current.category)}`}>
+                  {current.awaitingApproval ? "on hold" : current.category}
+                </span>
               </div>
               <div className="dep-current-title">
                 {current.type.toUpperCase()} · {jobTitle(current)}
@@ -287,7 +337,7 @@ export default function LogPanel() {
           )}
 
           {/* Minimized categories, side by side */}
-          {!runningOnly && jobs.length > 0 && (
+          {!runningOnly && (jobs.length > 0 || holdEntries.length > 0) && (
             <>
               <div className="dep-cats">
                 {CATS.map((c) => {

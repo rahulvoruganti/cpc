@@ -25,25 +25,38 @@ function write(store) {
   fs.writeFileSync(EXPIRY_FILE, JSON.stringify(store, null, 2));
 }
 
-// expiry: { "105": { expiresAt, setBy, updatedAt } }
+// expiry: { "105": { expiresAt, setBy, type, ttlDays, updatedAt } }
 
 function daysFromNow(days) {
   return new Date(Date.now() + days * 86400_000).toISOString();
+}
+
+// Coerce a requested lifetime to a sane whole number of days, or fall back to
+// the system default when it's missing / invalid.
+function normalizeTtlDays(days) {
+  const n = Number(days);
+  if (!Number.isFinite(n) || n <= 0) return DEFAULT_TTL_DAYS;
+  return Math.min(Math.round(n), 3650); // cap at ~10 years
 }
 
 export function getExpiry(vmid) {
   return read().expiry[String(vmid)] || null;
 }
 
-// Set a default expiry only if the resource doesn't already have one. Called
+// Set the initial expiry only if the resource doesn't already have one. Called
 // on provision — safe to invoke repeatedly (won't keep pushing the date out).
-export function setDefaultExpiry(vmid, setBy = "system") {
+// `ttlDays` is the lifetime the requester asked for on the provisioning form;
+// it defaults to DEFAULT_TTL_DAYS when unset.
+export function setDefaultExpiry(vmid, { setBy = "system", ttlDays, type } = {}) {
   const store = read();
   const key = String(vmid);
   if (store.expiry[key]) return store.expiry[key];
+  const days = normalizeTtlDays(ttlDays);
   const record = {
-    expiresAt: daysFromNow(DEFAULT_TTL_DAYS),
+    expiresAt: daysFromNow(days),
     setBy,
+    type: type || null,
+    ttlDays: days,
     updatedAt: new Date().toISOString(),
   };
   store.expiry[key] = record;
@@ -51,13 +64,17 @@ export function setDefaultExpiry(vmid, setBy = "system") {
   return record;
 }
 
-// Admin action: push the expiry out by N days from now (or set an explicit date).
+// Renew / extend: push the expiry out by N days from now (or set an explicit
+// date). Preserves the resource type recorded at provision time.
 export function extendExpiry(vmid, { days, expiresAt, setBy = "admin" } = {}) {
   const store = read();
   const key = String(vmid);
+  const prev = store.expiry[key];
   const record = {
     expiresAt: expiresAt || daysFromNow(days ?? DEFAULT_TTL_DAYS),
     setBy,
+    type: prev?.type || null,
+    ttlDays: days != null ? normalizeTtlDays(days) : (prev?.ttlDays ?? DEFAULT_TTL_DAYS),
     updatedAt: new Date().toISOString(),
   };
   store.expiry[key] = record;

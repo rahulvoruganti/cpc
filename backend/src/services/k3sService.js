@@ -109,6 +109,15 @@ export async function deleteNamespace(name) {
   return request("delete", `/api/v1/namespaces/${encodeURIComponent(name)}`);
 }
 
+// Force-terminate a namespace that's stuck (e.g. hanging in "Terminating"):
+// clear its finalizers via the /finalize subresource so the API server can
+// remove it. Use with care — it drops the normal cleanup guarantees.
+export async function forceFinalizeNamespace(name) {
+  const ns = await getNamespace(name);
+  ns.spec = { ...(ns.spec || {}), finalizers: [] };
+  return request("put", `/api/v1/namespaces/${encodeURIComponent(name)}/finalize`, ns);
+}
+
 // --- Workloads (Deployments) + Pods ---------------------------------------
 export async function listPods(namespace) {
   const data = await request("get", `/api/v1/namespaces/${encodeURIComponent(namespace)}/pods`);

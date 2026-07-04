@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMyPreferences, updateMyPreferences } from "../api/client.js";
+import ApiTokensPanel from "./ApiTokensPanel.jsx";
+import NotificationBell from "./NotificationBell.jsx";
 
 const THEMES = [
   { id: "slate", label: "Slate" },
@@ -113,6 +115,7 @@ export default function TopNav() {
       </div>
 
       <div className="topnav-user">
+        <NotificationBell />
         <div className="user-menu" ref={menuRef}>
           <button
             className="user-chip-btn"
@@ -131,7 +134,7 @@ export default function TopNav() {
           </button>
 
           {menuOpen && (
-            <div className="user-menu-popover">
+            <div className={`user-menu-popover ${menuView === "tokens" ? "user-menu-popover-wide" : ""}`}>
               <div className="user-menu-head">
                 <div className="name">{user?.displayName || user?.username}</div>
                 <div className="role">{user?.role}</div>
@@ -143,7 +146,18 @@ export default function TopNav() {
                     <span className="menu-row-label">Preferences</span>
                     <span className="menu-row-arrow">›</span>
                   </button>
+                  <button className="menu-row" onClick={() => setMenuView("tokens")}>
+                    <span className="menu-row-label">API tokens</span>
+                    <span className="menu-row-arrow">›</span>
+                  </button>
                   <button className="btn-menu-signout" onClick={signOut}>Sign out</button>
+                </>
+              )}
+
+              {menuView === "tokens" && (
+                <>
+                  <button className="popover-back" onClick={() => setMenuView("root")}>← Back</button>
+                  <ApiTokensPanel />
                 </>
               )}
 

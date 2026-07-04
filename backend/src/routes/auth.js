@@ -14,6 +14,7 @@ import {
 } from "../services/userStore.js";
 import { logAudit } from "../services/auditService.js";
 import { requireAuth } from "../middleware/auth.js";
+import { createPat, listPats, revokePat } from "../services/patStore.js";
 
 const router = Router();
 
@@ -106,6 +107,31 @@ router.put("/auth/preferences", requireAuth, (req, res) => {
   } catch (err) {
     res.status(404).json({ error: err.message });
   }
+});
+
+// --- Personal Access Tokens (for Terraform / Ansible / CLI) ---
+router.get("/auth/pats", requireAuth, (req, res) => {
+  res.json({ pats: listPats(req.user.username) });
+});
+
+router.post("/auth/pats", requireAuth, (req, res) => {
+  const { name, expiresInDays } = req.body || {};
+  const { token, pat } = createPat({
+    username: req.user.username,
+    role: req.user.role,
+    name,
+    expiresInDays,
+  });
+  logAudit({ actor: req.user, action: "auth.pat.create", target: pat.id, detail: { name: pat.name, expiresAt: pat.expiresAt } });
+  // The raw token is returned exactly once — the client must store it now.
+  res.status(201).json({ token, pat });
+});
+
+router.delete("/auth/pats/:id", requireAuth, (req, res) => {
+  const ok = revokePat(req.user.username, req.params.id);
+  logAudit({ actor: req.user, action: "auth.pat.revoke", target: req.params.id, status: ok ? "success" : "failure" });
+  if (!ok) return res.status(404).json({ error: "Token not found" });
+  res.json({ ok: true });
 });
 
 export default router;

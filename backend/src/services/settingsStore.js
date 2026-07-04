@@ -70,6 +70,30 @@ export const SETTING_GROUPS = [
     ],
   },
   {
+    id: "servicenow",
+    title: "ServiceNow (ITSM)",
+    note: "Applies immediately. Link the portal to your ServiceNow instance so deployment failures raise an incident there. Leave the URL blank to keep incidents mocked.",
+    live: true,
+    fields: [
+      { key: "SERVICENOW_INSTANCE_URL", label: "Instance URL", type: "text", placeholder: "https://yourcompany.service-now.com" },
+      { key: "SERVICENOW_USERNAME", label: "Username", type: "text", placeholder: "cpc.integration" },
+      { key: "SERVICENOW_PASSWORD", label: "Password", type: "text", secret: true },
+      { key: "SERVICENOW_INCIDENTS_ENABLED", label: "Raise an incident when a deployment fails", type: "bool" },
+    ],
+  },
+  {
+    id: "ipam",
+    title: "IPAM (IP Address Management)",
+    note: "Applies immediately. Link an IPAM system (phpIPAM, NetBox, Infoblox, …) so the portal can reserve and release IP addresses through its API.",
+    live: true,
+    fields: [
+      { key: "IPAM_URL", label: "API base URL", type: "text", placeholder: "https://ipam.internal/api/v2" },
+      { key: "IPAM_USERNAME", label: "Username / App ID", type: "text", placeholder: "cpc" },
+      { key: "IPAM_API_TOKEN", label: "API token / key", type: "text", secret: true },
+      { key: "IPAM_VERIFY_TLS", label: "Verify TLS certificate", type: "bool" },
+    ],
+  },
+  {
     id: "ai",
     title: "AI assistant (Gemini)",
     note: "Takes effect after a backend restart.",

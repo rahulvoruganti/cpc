@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { approveProvisionRequest, getProvisionRequests } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import RejectRequestModal from "../components/RejectRequestModal.jsx";
+import RequestDetailsModal from "../components/RequestDetailsModal.jsx";
 
 function statusClass(status = "") {
   const s = status.toLowerCase();
@@ -15,9 +16,9 @@ function statusClass(status = "") {
 export default function Requests() {
   const { isAdmin } = useAuth();
   const [items, setItems] = useState([]);
-  const [busyId, setBusyId] = useState(null);
   const [query, setQuery] = useState("");
   const [rejectTarget, setRejectTarget] = useState(null);  // request being rejected
+  const [viewTarget, setViewTarget] = useState(null);      // request being reviewed
 
   const load = async () => {
     const data = await getProvisionRequests();
@@ -40,16 +41,11 @@ export default function Requests() {
     );
   }, [items, query]);
 
+  // Approve from the review modal. Lets errors propagate so the modal can show
+  // them inline; refreshes the list on success.
   const handleApprove = async (id) => {
-    setBusyId(id);
-    try {
-      await approveProvisionRequest(id);
-      await load();
-    } catch (e) {
-      alert(e.response?.data?.error || e.message);
-    } finally {
-      setBusyId(null);
-    }
+    await approveProvisionRequest(id);
+    await load();
   };
 
 
@@ -100,8 +96,11 @@ export default function Requests() {
                   <td className="mono">{r.jobId || "-"}</td>
                   {isAdmin && (
                     <td className="actions-cell">
-                      <button className="btn btn-primary btn-sm" disabled={!canReview || busyId === r.id} onClick={() => handleApprove(r.id)}>Approve</button>
-                      <button className="btn btn-ghost btn-sm" disabled={!canReview || busyId === r.id} onClick={() => setRejectTarget(r)}>Reject</button>
+                      {canReview ? (
+                        <button className="btn btn-primary btn-sm" onClick={() => setViewTarget(r)}>View details</button>
+                      ) : (
+                        <span className="muted" style={{ fontSize: 12.5 }}>—</span>
+                      )}
                     </td>
                   )}
                 </tr>
@@ -117,6 +116,15 @@ export default function Requests() {
           </tbody>
         </table>
       </div>
+
+      {viewTarget && (
+        <RequestDetailsModal
+          request={viewTarget}
+          onApprove={handleApprove}
+          onReject={(r) => { setViewTarget(null); setRejectTarget(r); }}
+          onClose={() => setViewTarget(null)}
+        />
+      )}
 
       {rejectTarget && (
         <RejectRequestModal

@@ -2,12 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   getSettings, updateSettings,
   testProxmoxConnection, testK3sConnection,
+  testServiceNowConnection, testIpamConnection,
 } from "../api/client.js";
 
 // Which categories support a live connectivity test, and how to run it.
 const TESTERS = {
   proxmox: { label: "Save & test connection", run: testProxmoxConnection },
   k3s: { label: "Save & test connection", run: testK3sConnection },
+  servicenow: { label: "Save & test connection", run: testServiceNowConnection },
+  ipam: { label: "Save & test connection", run: testIpamConnection },
 };
 
 // Build the flat { KEY: value } form state from the grouped server response.

@@ -1,8 +1,57 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import {
   getVmTemplates, getContainerTemplates, getStacks, getEnvironments, getTemplateDefaults,
   getCostRates, provisionVm, provisionInternal, provisionContainer, provisionStack,
+  getIacTemplate,
 } from "../api/client.js";
+
+const IAC_TOOL_OPTIONS = [
+  { id: "terraform", label: "Terraform" },
+  { id: "ansible", label: "Ansible" },
+  { id: "pulumi", label: "Pulumi (TypeScript)" },
+  { id: "curl", label: "REST (cURL)" },
+];
+
+// Tool picker + download for a template's Infrastructure-as-Code file. The
+// downloaded file targets the CPC API and authenticates with an API token
+// (generated from the account menu).
+function IacExport({ kind, id }) {
+  const [tool, setTool] = useState("terraform");
+  const [busy, setBusy] = useState(false);
+
+  const download = async () => {
+    setBusy(true);
+    try {
+      const file = await getIacTemplate({ kind, id, tool });
+      const blob = new Blob([file.content], { type: "text/plain;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = file.filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      alert(e.response?.data?.error || e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Stop clicks bubbling to the row (which would open the config modal).
+  return (
+    <div className="iac-export-inline" onClick={(e) => e.stopPropagation()}>
+      <span className="iac-export-inline-label">Use with IaC:</span>
+      <select className="control-select iac-export-select" value={tool} onChange={(e) => setTool(e.target.value)} aria-label="IaC tool">
+        {IAC_TOOL_OPTIONS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+      </select>
+      <button type="button" className="btn btn-ghost btn-sm" onClick={download} disabled={busy}>
+        {busy ? "Preparing…" : "Download"}
+      </button>
+    </div>
+  );
+}
 
 // Sensible fallbacks so the estimate renders even before the rates load.
 const DEFAULT_COST_RATES = { perCpu: 21.5, perGbRam: 1, perGbStorage: 0.14, currency: "EUR" };
@@ -15,12 +64,38 @@ function formatMoney(amount, currency = "EUR") {
   return `${symbol}${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-// Look up a template's default packages (case-insensitive by name, then id).
+// Cost-estimate thresholds (per month, in the configured currency): the total
+// turns amber past the first and red past the second.
+const COST_AMBER_AT = 100;
+const COST_RED_AT = 200;
+
+// Days-per-unit for the "Required for" lifetime dropdown.
+const TTL_UNIT_DAYS = { days: 1, months: 30, years: 365 };
+
+// Red asterisk marking a mandatory field.
+function Req() {
+  return <span className="req" aria-hidden="true"> *</span>;
+}
+
+// A template's default packages. Prefer the list the backend already attached
+// to the template (so it always travels with it); otherwise fall back to a
+// tolerant lookup in the defaults map (match name/id, case-insensitive, and
+// forgiving of extra wording like "MERN Stack").
 function defaultPackagesFor(item, defaultsMap) {
+  if (Array.isArray(item?.defaultPackages)) return item.defaultPackages;
   if (!item || !defaultsMap) return [];
-  const keys = [item.name, item.id].filter(Boolean).map((k) => String(k).toLowerCase());
-  const entry = Object.entries(defaultsMap).find(([k]) => keys.includes(k.toLowerCase()));
+  const cands = [item.name, item.id].filter(Boolean).map((k) => String(k).toLowerCase());
+  const entry = Object.entries(defaultsMap).find(([k]) => {
+    const key = k.toLowerCase();
+    return cands.some((c) => c === key || c.includes(key) || key.includes(c));
+  });
   return Array.isArray(entry?.[1]) ? entry[1] : [];
+}
+
+// Normalize a default-package entry to a display name (entries may be objects
+// like { letter, name } or plain strings).
+function pkgName(p) {
+  return typeof p === "string" ? p : (p?.name || p?.letter || "");
 }
 
 const KIND_LABELS = {
@@ -29,106 +104,127 @@ const KIND_LABELS = {
   stack: "Stack",
 };
 
-const PACKAGE_OPTIONS = [
-  "ansible",
-  "aqt",
-  "awscli",
-  "curl",
-  "docker",
-  "docker-compose",
-  "dotnet-sdk",
-  "git",
-  "go",
-  "grafana",
-  "helm",
-  "htop",
-  "java",
-  "jq",
-  "kubectl",
-  "maven",
-  "mongodb",
-  "mysql",
-  "nginx",
-  "nodejs",
-  "openjdk",
-  "php",
-  "postman",
-  "postgres",
-  "prometheus",
-  "python",
-  "rabbitmq",
-  "redis",
-  "terraform",
-  "tmux",
-  "vim",
-  "yarn",
+// Catalog categories used to group the list. A stack is anything whose kind is
+// "stack" OR whose template name contains "stack" (e.g. "LAMP Stack"), so
+// stack-like templates are grouped with real stacks.
+const CATEGORY_META = {
+  stack: { label: "Stacks", icon: "🧩" },
+  vm: { label: "Virtual machines", icon: "🖥" },
+  container: { label: "Containers", icon: "📦" },
+};
+const CATEGORY_ORDER = ["stack", "vm", "container"];
+
+function categoryOf(row) {
+  if (row.kind === "stack") return "stack";
+  if (/\bstack\b/i.test(row.item?.name || "")) return "stack";
+  return row.kind; // "vm" | "container"
+}
+
+// Selectable software, grouped by category so the picker stays scannable as the
+// list grows. The picker scrolls internally, so adding entries here never
+// changes the form's height.
+const PACKAGE_CATEGORIES = [
+  { name: "Languages & runtimes", items: ["dotnet-sdk", "go", "java", "nodejs", "openjdk", "php", "python"] },
+  { name: "Build tools", items: ["aqt", "maven", "yarn"] },
+  { name: "Containers & orchestration", items: ["docker", "docker-compose", "helm", "kubectl"] },
+  { name: "Databases & cache", items: ["mongodb", "mysql", "postgres", "redis"] },
+  { name: "Messaging", items: ["rabbitmq"] },
+  { name: "Web & proxy", items: ["nginx"] },
+  { name: "DevOps & IaC", items: ["ansible", "terraform"] },
+  { name: "Monitoring", items: ["grafana", "prometheus"] },
+  { name: "CLI & utilities", items: ["awscli", "curl", "git", "htop", "jq", "postman", "tmux", "vim"] },
 ];
 
-function SearchablePackageDropdown({
-  label,
-  options,
-  selected,
-  onToggle,
-  helperText,
-  defaultOpen = false,
-}) {
-  const [open, setOpen] = useState(defaultOpen);
+// Flat list of every selectable package (derived from the categories above).
+const PACKAGE_OPTIONS = PACKAGE_CATEGORIES.flatMap((c) => c.items);
+
+// Always-visible package selector: a search box over a scrollable, category-
+// grouped grid of clickable chips (click to toggle). Selected chips are
+// highlighted and also listed in a summary strip so the choice stays visible
+// while searching. The catalog area scrolls internally, so adding more packages
+// never changes the form's height.
+function PackagePicker({ categories, selected, onToggle, onClear, defaultPackages = [] }) {
   const [query, setQuery] = useState("");
-  const rootRef = useRef(null);
+  const q = query.trim().toLowerCase();
 
-  useEffect(() => {
-    const onDocClick = (e) => {
-      if (!rootRef.current) return;
-      if (!rootRef.current.contains(e.target)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
-
-  const filtered = options.filter((pkg) => pkg.toLowerCase().includes(query.trim().toLowerCase()));
+  // Filter within each category and drop any that end up empty.
+  const groups = categories
+    .map((cat) => ({ name: cat.name, items: cat.items.filter((pkg) => pkg.toLowerCase().includes(q)) }))
+    .filter((cat) => cat.items.length > 0);
 
   return (
-    <div className="field provision-packages-field" ref={rootRef}>
-      <label>{label}</label>
-      <button
-        type="button"
-        className="provision-select-trigger"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-      >
-        <span>{selected.length ? `${selected.length} selected` : "Select packages"}</span>
-        <span className="muted">{open ? "Hide" : "Show"}</span>
-      </button>
+    <div className="pkg-picker">
+      <div className="pkg-picker-head">
+        <label>Required packages</label>
+        {selected.length > 0 && (
+          <button type="button" className="pkg-clear" onClick={onClear}>
+            Clear ({selected.length})
+          </button>
+        )}
+      </div>
 
-      {open && (
-        <div className="provision-select-menu">
-          <input
-            className="control-input provision-select-search"
-            placeholder="Search packages..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-          />
-
-          <div className="provision-select-list" role="listbox" aria-label={`${label} package options`}>
-            {filtered.map((pkg) => {
-              const checked = selected.includes(pkg);
-              return (
-                <label key={pkg} className="provision-select-item">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggle(pkg)}
-                  />
-                  <span>{pkg}</span>
-                </label>
-              );
-            })}
-            {filtered.length === 0 && <div className="muted">No matching packages</div>}
+      {defaultPackages.length > 0 && (
+        <div className="pkg-defaults">
+          <span className="pkg-defaults-label">Included by default</span>
+          <div className="pkg-chips">
+            {defaultPackages.map((p, i) => (
+              <span key={`${pkgName(p)}-${i}`} className="provision-inline-kind provision-inline-kind-fixed">{pkgName(p)}</span>
+            ))}
           </div>
         </div>
       )}
 
-      {helperText && <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>{helperText}</p>}
+      <input
+        className="control-input pkg-search"
+        placeholder="Search packages…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+      />
+
+      <div className="pkg-catalog" role="listbox" aria-label="Package options" aria-multiselectable="true">
+        {groups.map((cat) => (
+          <div key={cat.name} className="pkg-cat">
+            <div className="pkg-cat-label">{cat.name}</div>
+            <div className="pkg-cat-grid">
+              {cat.items.map((pkg) => {
+                const checked = selected.includes(pkg);
+                return (
+                  <button
+                    type="button"
+                    key={pkg}
+                    className={`pkg-option ${checked ? "on" : ""}`}
+                    onClick={() => onToggle(pkg)}
+                    role="option"
+                    aria-selected={checked}
+                  >
+                    <span className="pkg-option-mark" aria-hidden="true">{checked ? "✓" : "+"}</span>
+                    <span className="pkg-option-name">{pkg}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+        {groups.length === 0 && <div className="muted pkg-empty">No matching packages</div>}
+      </div>
+
+      <div className="pkg-selected">
+        <span className="pkg-selected-label">Will be installed</span>
+        <div className="pkg-chips">
+          {selected.map((pkg) => (
+            <button
+              type="button"
+              key={pkg}
+              className="pkg-selected-chip"
+              onClick={() => onToggle(pkg)}
+              title="Remove"
+            >
+              {pkg}<span className="pkg-selected-x" aria-hidden="true">×</span>
+            </button>
+          ))}
+          {selected.length === 0 && <span className="muted">No extra packages selected</span>}
+        </div>
+      </div>
     </div>
   );
 }
@@ -140,13 +236,12 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, cos
   const isStack = selected.kind === "stack";
   const isContainer = selected.kind === "container";
   const isVm = selected.kind === "vm" && !isInternal;
-  const [form, setForm] = useState({ hostname: "", cpu: 2, memoryGB: 2, diskGB: 50, username: "", sudoAccess: false, environment: "" });
+  const [form, setForm] = useState({ hostname: "", cpu: 2, memoryGB: 2, diskGB: 50, ttlUnit: "days", ttlValue: 30, username: "", sudoAccess: false, environment: "" });
 
   const [requiredPackages, setRequiredPackages] = useState([]);
-  const [showWorkflow, setShowWorkflow] = useState(false);
 
   useEffect(() => {
-    setForm({ hostname: "", cpu: 2, memoryGB: 2, diskGB: 50, username: "", sudoAccess: false, environment: "" });
+    setForm({ hostname: "", cpu: 2, memoryGB: 2, diskGB: 50, ttlUnit: "days", ttlValue: 30, username: "", sudoAccess: false, environment: "" });
     setRequiredPackages([]);
   }, [selected.kind, item.id]);
 
@@ -163,6 +258,8 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, cos
       : [...prev, pkg]));
   };
 
+  const clearRequiredPackages = () => setRequiredPackages([]);
+
   const effectivePackages = Array.from(new Set(requiredPackages));
   const hasHostname = form.hostname.trim().length > 0;
   const hasCpu = Number.isFinite(form.cpu) && form.cpu >= 1 && form.cpu <= 32;
@@ -170,9 +267,16 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, cos
   const hasDisk = isContainer
     ? true
     : Number.isFinite(form.diskGB) && form.diskGB >= 5 && form.diskGB <= 2000;
-  // VMs additionally require an environment (network) and a username.
+  // Lifetime chosen via the unit dropdown (+ amount). "Permanent" means no
+  // decommission date at all.
+  const permanent = form.ttlUnit === "permanent";
+  const ttlDays = permanent
+    ? null
+    : Math.round(Number(form.ttlValue) * (TTL_UNIT_DAYS[form.ttlUnit] || 1));
+  const hasTtl = permanent || (Number.isFinite(ttlDays) && ttlDays >= 1 && ttlDays <= 3650);
+  // VMs additionally require an environment and a username.
   const hasVmExtras = !isVm || (form.environment && form.username.trim().length > 0);
-  const isFormValid = hasHostname && hasCpu && hasMemory && hasDisk && hasVmExtras;
+  const isFormValid = hasHostname && hasCpu && hasMemory && hasDisk && hasTtl && hasVmExtras;
 
   // Live monthly cost estimate — recomputed whenever the requested resources or
   // the admin-configured rates change. Containers have no separate disk, so
@@ -188,6 +292,17 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, cos
   }, [form.cpu, form.memoryGB, form.diskGB, isContainer, costRates]);
   const currency = costRates.currency || "EUR";
 
+  // Cost banner severity: amber past COST_AMBER_AT, red past COST_RED_AT.
+  const costLevel = cost.total >= COST_RED_AT ? "red" : cost.total >= COST_AMBER_AT ? "amber" : "ok";
+
+  // Human preview of when the resource will be decommissioned if not renewed.
+  const decommissionText = useMemo(() => {
+    if (permanent) return "Runs permanently — no automatic decommission.";
+    if (!Number.isFinite(ttlDays) || ttlDays <= 0) return "Enter a positive amount.";
+    const when = new Date(Date.now() + ttlDays * 86400_000);
+    return `Decommissions on ${when.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" })} unless renewed.`;
+  }, [permanent, ttlDays]);
+
   return (
     <div className="card card-pad provision-config-panel provision-modal-card">
       <div className="provision-modal-head">
@@ -201,7 +316,7 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, cos
 
       {item.description && <p className="muted provision-config-desc">{item.description}</p>}
 
-      <div className="cost-estimate" role="status" aria-live="polite">
+      <div className={`cost-estimate cost-${costLevel}`} role="status" aria-live="polite">
         <div className="cost-estimate-head">
           <span className="cost-estimate-label">Estimated cost</span>
           <span className="cost-estimate-total">
@@ -217,134 +332,137 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, cos
         </div>
       </div>
 
-      {isInternal && (
-        <div className="card card-pad" style={{ background: "var(--surface-2, rgba(0,0,0,0.03))", marginBottom: 16 }}>
-          <button
-            type="button"
-            className="wf-toggle"
-            onClick={() => setShowWorkflow((v) => !v)}
-            aria-expanded={showWorkflow}
-          >
-            <span className="badge provision-kind-badge">workflow</span>
-            <span className="muted">{showWorkflow ? "Hide details" : "Show details"}</span>
-            <span className="wf-caret" aria-hidden="true">{showWorkflow ? "▾" : "▸"}</span>
-          </button>
-
-          {showWorkflow && (
-            <>
-              <p className="muted" style={{ marginTop: 10, marginBottom: 0 }}>
-                This does not create a Proxmox VM. It runs our standard internal provisioning process and
-                calls each internal system in turn — watch it stream live in the deployment monitor:
-              </p>
-              <ol className="wf-track">
-                {(item.workflowSteps || []).map((label, i) => (
-                  <li key={i} className="wf-track-step wf-track-pending">
-                    <span className="wf-track-dot">{i + 1}</span>
-                    <span className="wf-track-body">
-                      <span className="wf-track-label">{label}</span>
-                    </span>
-                  </li>
-                ))}
-              </ol>
-            </>
-          )}
-        </div>
-      )}
-
-      <form onSubmit={(e) => {
+      <form className="provision-form" onSubmit={(e) => {
         e.preventDefault();
         onSubmit({
           ...form,
+          ttlDays,
+          permanent,
           packages: effectivePackages,
           packageSelection: { required: effectivePackages, selected: effectivePackages, effective: effectivePackages },
         });
       }}>
-        <div className="provision-field-grid">
-          <div className="field">
-            <label>{isStack ? "Hostname prefix" : "Hostname"}</label>
-            <input required placeholder={isStack ? "myapp" : "my-vm-01"} value={form.hostname} onChange={upd("hostname")} />
-          </div>
-          <div className="field">
-            <label>CPU cores</label>
-            <input type="number" min="1" max="32" required value={form.cpu} onChange={upd("cpu")} />
-          </div>
-          <div className="field">
-            <label>Memory (GB)</label>
-            <input type="number" min="1" max="256" required value={form.memoryGB} onChange={upd("memoryGB")} />
-          </div>
-          {!isContainer && (
-            <div className="field">
-              <label>Disk size (GB)</label>
-              <input type="number" min="5" max="2000" required value={form.diskGB} onChange={upd("diskGB")} />
-            </div>
-          )}
-        </div>
-
-        {isVm && (
-          <>
+        <div className="provision-form-body">
+          <section className="provision-form-col">
+            <div className="provision-col-title">Configuration</div>
             <div className="provision-field-grid">
               <div className="field">
-                <label>Environment</label>
-                <select required value={form.environment} onChange={upd("environment")}>
-                  <option value="">Select network…</option>
-                  {environments.map((e) => (
-                    <option key={e.iface} value={e.iface}>{e.label} ({e.type} · {e.iface})</option>
-                  ))}
-                </select>
-                {environments.length === 0 && (
-                  <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>No environments mapped yet — an admin must label a network in Mappings.</p>
-                )}
+                <label>{isStack ? "Hostname prefix" : "Hostname"}<Req /></label>
+                <input required placeholder={isStack ? "myapp" : "my-vm-01"} value={form.hostname} onChange={upd("hostname")} />
               </div>
               <div className="field">
-                <label>Username</label>
-                <input required placeholder="e.g. appuser" value={form.username} onChange={upd("username")} autoComplete="off" />
+                <label>CPU cores<Req /></label>
+                <input type="number" min="1" max="32" required value={form.cpu} onChange={upd("cpu")} />
               </div>
-            </div>
-
-            <label className="pref-toggle-row" style={{ marginBottom: 14 }}>
-              <span>Grant sudo access to this user</span>
-              <input type="checkbox" checked={form.sudoAccess} onChange={upd("sudoAccess")} />
-            </label>
-
-            <p className="muted" style={{ marginTop: 0, marginBottom: 14 }}>
-              🔐 A strong password is generated automatically for this user and shown in the deployment summary.
-            </p>
-          </>
-        )}
-
-          {!isInternal && (
-            <>
-              {defaultPackages.length > 0 && (
-                <div className="field provision-packages-field">
-                  <label>Default applications for this stack</label>
-                  <div className="provision-packages-list">
-                    {defaultPackages.map((p) => (
-                      <span key={`${p.letter}-${p.name}`} className="provision-inline-kind provision-inline-kind-fixed">{p.name}</span>
-                    ))}
-                  </div>
+              <div className="field">
+                <label>Memory (GB)<Req /></label>
+                <input type="number" min="1" max="256" required value={form.memoryGB} onChange={upd("memoryGB")} />
+              </div>
+              {!isContainer && (
+                <div className="field">
+                  <label>Disk size (GB)<Req /></label>
+                  <input type="number" min="5" max="2000" required value={form.diskGB} onChange={upd("diskGB")} />
                 </div>
               )}
-
-              <SearchablePackageDropdown
-                label="Required packages"
-                options={PACKAGE_OPTIONS}
-                selected={requiredPackages}
-                onToggle={toggleRequiredPackage}
-                helperText="Search and select any extra software to install and enable on the VM."
-                defaultOpen
-              />
-
-              <div className="field provision-packages-field">
-                <label>Will be installed</label>
-                <div className="provision-packages-list">
-                  {effectivePackages.map((pkg) => (
-                    <span key={pkg} className="provision-inline-kind provision-inline-kind-final">{pkg}</span>
-                  ))}
-                  {effectivePackages.length === 0 && <span className="muted">No packages selected</span>}
+              <div className="field">
+                <label>Required for<Req /></label>
+                <div className="ttl-field">
+                  <select value={form.ttlUnit} onChange={upd("ttlUnit")}>
+                    <option value="permanent">Permanent</option>
+                    <option value="days">Days</option>
+                    <option value="months">Months</option>
+                    <option value="years">Years</option>
+                  </select>
+                  {!permanent && (
+                    <input
+                      className="ttl-value"
+                      type="number"
+                      min="1"
+                      required
+                      value={form.ttlValue}
+                      onChange={upd("ttlValue")}
+                      aria-label={`Number of ${form.ttlUnit}`}
+                    />
+                  )}
                 </div>
               </div>
-            </>
-          )}
+              {isVm && (
+                <div className="field provision-field-wide">
+                  <label>Environment<Req /></label>
+                  <select required value={form.environment} onChange={upd("environment")}>
+                    <option value="">Select environment…</option>
+                    {environments.map((e) => (
+                      <option key={e.iface} value={e.iface}>{e.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {isVm && (
+                <>
+                  <div className="field">
+                    <label>Username<Req /></label>
+                    <input required placeholder="e.g. appuser" value={form.username} onChange={upd("username")} autoComplete="off" />
+                  </div>
+                  <div className="field">
+                    <label>Sudo access</label>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={form.sudoAccess}
+                      className={`switch provision-sudo-switch ${form.sudoAccess ? "on" : ""}`}
+                      onClick={() => setForm((f) => ({ ...f, sudoAccess: !f.sudoAccess }))}
+                    >
+                      <span className="switch-knob" />
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <ul className="provision-form-notes">
+              <li>🗓 {decommissionText}</li>
+              {isVm && (
+                <li>🔐 A strong password is generated automatically for this user and shown in the deployment summary.</li>
+              )}
+              {isVm && environments.length === 0 && (
+                <li>⚠ No environments mapped yet — an admin must label a network in Mappings.</li>
+              )}
+            </ul>
+          </section>
+
+          <section className="provision-form-col provision-form-col-side">
+            {isInternal ? (
+              <>
+                <div className="provision-col-title">Internal workflow</div>
+                <p className="muted" style={{ marginTop: 0 }}>
+                  This does not create a Proxmox VM. It runs our standard internal provisioning process and
+                  calls each internal system in turn — watch it stream live in the deployment monitor:
+                </p>
+                <ol className="wf-track">
+                  {(item.workflowSteps || []).map((label, i) => (
+                    <li key={i} className="wf-track-step wf-track-pending">
+                      <span className="wf-track-dot">{i + 1}</span>
+                      <span className="wf-track-body">
+                        <span className="wf-track-label">{label}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </>
+            ) : (
+              <>
+                <div className="provision-col-title">Software</div>
+                <PackagePicker
+                  categories={PACKAGE_CATEGORIES}
+                  selected={requiredPackages}
+                  onToggle={toggleRequiredPackage}
+                  onClear={clearRequiredPackages}
+                  defaultPackages={defaultPackages}
+                />
+              </>
+            )}
+          </section>
+        </div>
 
         <div className="provision-modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
@@ -364,8 +482,6 @@ export default function Provision({ embedded = false }) {
   const [costRates, setCostRates] = useState(DEFAULT_COST_RATES);
   const [kindFilter, setKindFilter] = useState("all");
   const [query, setQuery] = useState("");
-  const [pageSize, setPageSize] = useState(20);
-  const [page, setPage] = useState(1);
   const [selected, setSelected] = useState(null);
   const [requestNotice, setRequestNotice] = useState("");
   const [busy, setBusy] = useState(false);
@@ -389,7 +505,7 @@ export default function Provision({ embedded = false }) {
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows
-      .filter((row) => kindFilter === "all" || row.kind === kindFilter)
+      .filter((row) => kindFilter === "all" || categoryOf(row) === kindFilter)
       .filter((row) => {
         if (!q) return true;
         return (row.item.name || "").toLowerCase().includes(q)
@@ -398,6 +514,26 @@ export default function Provision({ embedded = false }) {
       })
       .sort((a, b) => (a.item.name || "").localeCompare(b.item.name || ""));
   }, [rows, kindFilter, query]);
+
+  // Count catalog entries per category (for the filter chips).
+  const categoryCounts = useMemo(() => {
+    const counts = { stack: 0, vm: 0, container: 0 };
+    rows.forEach((row) => { counts[categoryOf(row)] += 1; });
+    return counts;
+  }, [rows]);
+
+  // Group the filtered rows into category sections, in a stable order.
+  const groupedRows = useMemo(() => {
+    const groups = new Map();
+    for (const row of filteredRows) {
+      const cat = categoryOf(row);
+      if (!groups.has(cat)) groups.set(cat, []);
+      groups.get(cat).push(row);
+    }
+    return CATEGORY_ORDER
+      .filter((cat) => groups.has(cat))
+      .map((cat) => ({ category: cat, rows: groups.get(cat) }));
+  }, [filteredRows]);
 
   const kindsByName = useMemo(() => {
     const map = new Map();
@@ -409,10 +545,6 @@ export default function Provision({ embedded = false }) {
     });
     return map;
   }, [rows]);
-
-  useEffect(() => {
-    setPage(1);
-  }, [kindFilter, query, pageSize]);
 
   useEffect(() => {
     if (!selected) return;
@@ -432,11 +564,6 @@ export default function Provision({ embedded = false }) {
     };
   }, [selected]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredRows.length / pageSize));
-  const safePage = Math.min(page, totalPages);
-  const pageStart = (safePage - 1) * pageSize;
-  const pageRows = filteredRows.slice(pageStart, pageStart + pageSize);
-
   const submit = async (form) => {
     if (!selected) return;
     setBusy(true);
@@ -449,6 +576,8 @@ export default function Provision({ embedded = false }) {
           cpu: form.cpu,
           memoryGB: form.memoryGB,
           diskGB: form.diskGB,
+          ttlDays: form.ttlDays,
+          permanent: form.permanent,
         });
       } else if (selected.kind === "vm") {
         result = await provisionVm({ templateId: selected.item.id, ...form });
@@ -461,6 +590,8 @@ export default function Provision({ embedded = false }) {
           cpu: form.cpu,
           memoryGB: form.memoryGB,
           diskGB: form.diskGB,
+          ttlDays: form.ttlDays,
+          permanent: form.permanent,
         });
       }
 
@@ -474,7 +605,10 @@ export default function Provision({ embedded = false }) {
         setRequestNotice("Provisioning started — follow the live progress in the deployment monitor.");
         window.dispatchEvent(new CustomEvent("cpc:open-deployment-monitor", { detail: { jobId: result.job.id } }));
       } else if (result?.request?.id) {
-        setRequestNotice(`Request ${result.request.id} submitted with status ${result.request.status}.`);
+        // High-config request paused for approval — pop the monitor so the user
+        // sees it on hold until an admin approves it.
+        setRequestNotice(`Request ${result.request.id} exceeds the size policy — it's on hold in the deployment monitor awaiting admin approval.`);
+        window.dispatchEvent(new CustomEvent("cpc:open-deployment-monitor", { detail: { requestId: result.request.id } }));
       }
     } catch (e) {
       alert(e.response?.data?.error || e.message);
@@ -491,10 +625,22 @@ export default function Provision({ embedded = false }) {
         <p>Search and select from catalog entries, then configure and launch from the side panel.</p>
       </div>
 
-      <div className="summary-strip" style={{ marginBottom: 16 }}>
-        <div className="summary-chip"><span className="icon">🖥</span> {vmTemplates.length} VM templates</div>
-        <div className="summary-chip"><span className="icon">📦</span> {containerTemplates.length} container templates</div>
-        <div className="summary-chip"><span className="icon">🧩</span> {stacks.length} stacks</div>
+      <div className="summary-strip" style={{ marginBottom: 16 }} role="group" aria-label="Filter catalog by category">
+        <button
+          type="button"
+          className={`summary-chip ${kindFilter === "all" ? "summary-chip-active" : ""}`}
+          aria-pressed={kindFilter === "all"}
+          onClick={() => setKindFilter("all")}
+        ><span className="icon">⚙</span> {rows.length} all</button>
+        {CATEGORY_ORDER.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            className={`summary-chip ${kindFilter === cat ? "summary-chip-active" : ""}`}
+            aria-pressed={kindFilter === cat}
+            onClick={() => setKindFilter((cur) => (cur === cat ? "all" : cat))}
+          ><span className="icon">{CATEGORY_META[cat].icon}</span> {categoryCounts[cat]} {CATEGORY_META[cat].label.toLowerCase()}</button>
+        ))}
       </div>
 
       <div className="provision-workbench">
@@ -505,18 +651,8 @@ export default function Provision({ embedded = false }) {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search by name, id, or description..."
+              aria-label="Search catalog"
             />
-            <select className="control-select" value={kindFilter} onChange={(e) => setKindFilter(e.target.value)}>
-              <option value="all">All kinds</option>
-              <option value="vm">Virtual machines</option>
-              <option value="container">Containers</option>
-              <option value="stack">Stacks</option>
-            </select>
-            <select className="control-select" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
             <span className="muted" style={{ marginLeft: "auto", fontSize: 13 }}>{filteredRows.length} results</span>
           </div>
 
@@ -531,40 +667,70 @@ export default function Provision({ embedded = false }) {
                 </tr>
               </thead>
               <tbody>
-                {pageRows.map((row) => {
-                  const isSelected = selected && selected.kind === row.kind && selected.item.id === row.item.id;
-                  const nameKey = (row.item.name || "").trim().toLowerCase();
-                  const kinds = nameKey ? Array.from(kindsByName.get(nameKey) || []) : [row.kind];
-                  return (
-                    <tr
-                      key={`${row.kind}:${row.item.id}`}
-                      className={isSelected ? "provision-row-selected" : ""}
-                      onClick={() => setSelected(row)}
-                    >
-                      <td>
-                        <div className="provision-row-title">
-                          {row.item.name}
-                          {row.item.provider === "internal" && (
-                            <span className="provision-inline-kind" style={{ marginLeft: 8 }}>Internal workflow</span>
-                          )}
-                        </div>
-                        {kinds.length > 1 && (
-                          <div className="provision-name-kinds">
-                            {kinds.map((k) => (
-                              <span key={k} className="provision-inline-kind">{KIND_LABELS[k]}</span>
-                            ))}
-                          </div>
-                        )}
-                        {!!row.item.description && <div className="muted provision-row-sub">{row.item.description}</div>}
-                      </td>
-                      <td><span className="badge provision-kind-badge">{KIND_LABELS[row.kind]}</span></td>
-                      <td className="mono">{row.item.id}</td>
-                      <td className="mono">{row.item.vmid ? `VMID ${row.item.vmid}` : "-"}</td>
+                {groupedRows.map(({ category, rows: catRows }) => (
+                  <Fragment key={category}>
+                    <tr className="provision-group-row">
+                      <th colSpan={4} scope="colgroup">
+                        <span className="provision-group-icon" aria-hidden="true">{CATEGORY_META[category].icon}</span>
+                        {CATEGORY_META[category].label}
+                        <span className="provision-group-count">{catRows.length}</span>
+                      </th>
                     </tr>
-                  );
-                })}
+                    {catRows.map((row) => {
+                      const isSelected = selected && selected.kind === row.kind && selected.item.id === row.item.id;
+                      const nameKey = (row.item.name || "").trim().toLowerCase();
+                      const kinds = nameKey ? Array.from(kindsByName.get(nameKey) || []) : [row.kind];
+                      return (
+                        <tr
+                          key={`${row.kind}:${row.item.id}`}
+                          className={isSelected ? "provision-row-selected" : ""}
+                          onClick={() => setSelected(row)}
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`Configure ${row.item.name}`}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelected(row); }
+                          }}
+                        >
+                          <td>
+                            <div className="provision-row-title">
+                              {row.item.name}
+                              {row.item.provider === "internal" && (
+                                <span className="provision-inline-kind" style={{ marginLeft: 8 }}>Internal workflow</span>
+                              )}
+                            </div>
+                            {kinds.length > 1 && (
+                              <div className="provision-name-kinds">
+                                {kinds.map((k) => (
+                                  <span key={k} className="provision-inline-kind">{KIND_LABELS[k]}</span>
+                                ))}
+                              </div>
+                            )}
+                            {!!row.item.description && <div className="muted provision-row-sub">{row.item.description}</div>}
+                            {(() => {
+                              const defs = defaultPackagesFor(row.item, templateDefaults);
+                              if (!defs.length) return null;
+                              return (
+                                <div className="provision-row-defaults">
+                                  <span className="provision-row-defaults-label">Includes by default:</span>
+                                  {defs.map((p, i) => (
+                                    <span key={`${pkgName(p)}-${i}`} className="provision-inline-kind provision-inline-kind-fixed">{pkgName(p)}</span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                            <IacExport kind={row.kind} id={row.item.id} />
+                          </td>
+                          <td><span className="badge provision-kind-badge">{KIND_LABELS[row.kind]}</span></td>
+                          <td className="mono">{row.item.id}</td>
+                          <td className="mono">{row.item.vmid ? `VMID ${row.item.vmid}` : "-"}</td>
+                        </tr>
+                      );
+                    })}
+                  </Fragment>
+                ))}
 
-                {pageRows.length === 0 && (
+                {groupedRows.length === 0 && (
                   <tr>
                     <td colSpan={4} className="muted" style={{ textAlign: "center", padding: 22 }}>
                       No catalog entries match your filters.
@@ -574,18 +740,12 @@ export default function Provision({ embedded = false }) {
               </tbody>
             </table>
           </div>
-
-          <div className="pagination-row">
-            <button className="btn btn-ghost btn-sm" disabled={safePage <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>Previous</button>
-            <span className="muted">Page {safePage} / {totalPages}</span>
-            <button className="btn btn-ghost btn-sm" disabled={safePage >= totalPages} onClick={() => setPage((p) => Math.min(totalPages, p + 1))}>Next</button>
-          </div>
         </div>
       </div>
 
       {selected && (
-        <div className="provision-modal-backdrop" onClick={() => setSelected(null)}>
-          <div className="provision-modal-shell" onClick={(e) => e.stopPropagation()}>
+        <div className="provision-modal-backdrop">
+          <div className="provision-modal-shell">
             <ProvisionForm selected={selected} environments={environments} templateDefaults={templateDefaults} costRates={costRates} busy={busy} onSubmit={submit} onClose={() => setSelected(null)} />
           </div>
         </div>

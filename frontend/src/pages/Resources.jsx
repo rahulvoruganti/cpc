@@ -5,17 +5,23 @@ import TerminalModal from "../components/TerminalModal.jsx";
 import EditResourceModal from "../components/EditResourceModal.jsx";
 import ExtendExpiryModal from "../components/ExtendExpiryModal.jsx";
 import PowerMenu from "../components/PowerMenu.jsx";
+import RowMenu from "../components/RowMenu.jsx";
+import TagsMenu from "../components/TagsMenu.jsx";
+import SnapshotModal from "../components/SnapshotModal.jsx";
+import BackupModal from "../components/BackupModal.jsx";
 import {
   IconPlay,
   IconPower,
   IconReboot,
-  IconBolt,
   IconTerminal,
   IconEdit,
   IconCalendarPlus,
   IconTrash,
   IconServer,
   IconBox,
+  IconActions,
+  IconCamera,
+  IconArchive,
 } from "../components/icons.jsx";
 
 function fmtMem(b) {
@@ -55,6 +61,8 @@ export default function Resources() {
   const [connectTarget, setConnectTarget] = useState(null);  // { vmid, ip, hostname }
   const [editTarget, setEditTarget] = useState(null);        // resource being edited
   const [extendTarget, setExtendTarget] = useState(null);    // resource whose expiry is being extended
+  const [snapshotTarget, setSnapshotTarget] = useState(null); // resource whose snapshots are managed
+  const [backupTarget, setBackupTarget] = useState(null);    // resource whose backup is configured
 
   const load = () => getResources().then(setResources).catch((e) => setError(e.response?.data?.error || e.message));
 
@@ -210,20 +218,26 @@ export default function Resources() {
                 const running = r.status === "running";
                 const busy = pending[r.vmid];
 
-                // Power actions are contextual: only power-on when stopped,
-                // only shutdown/reboot/hard-reset when running. Hard reset is
-                // VM-only (LXC has no Proxmox reset endpoint). Starting a
-                // stopped resource remains admin-only.
+                // Power menu is contextual: when running, only Power off +
+                // Reboot; when stopped, only Power on (admin-only).
                 const powerItems = [];
                 if (running) {
-                  powerItems.push({ key: "shutdown", label: "Shutdown", icon: <IconPower size={15} style={{ color: "var(--warn)" }} />, onClick: () => act(r, "shutdown") });
+                  powerItems.push({ key: "shutdown", label: "Power off", icon: <IconPower size={15} style={{ color: "var(--warn)" }} />, onClick: () => act(r, "shutdown") });
                   powerItems.push({ key: "reboot", label: "Reboot", icon: <IconReboot size={15} className="icon-spin-hover" style={{ color: "var(--accent)" }} />, onClick: () => act(r, "reboot") });
-                  if (r.type === "vm") {
-                    powerItems.push({ key: "reset", label: "Hard reset", icon: <IconBolt size={15} />, danger: true, onClick: () => act(r, "reset") });
-                  }
                 } else if (isAdmin) {
                   powerItems.push({ key: "start", label: "Power on", icon: <IconPlay size={15} style={{ color: "var(--ok)" }} />, onClick: () => act(r, "start") });
                 }
+
+                // Actions menu: Console (running), Edit, Renew, Snapshot,
+                // Backup, and Delete (admin). Snapshot/Backup are VM-only.
+                const actionItems = [
+                  running && { key: "console", label: "Console", icon: <IconTerminal size={15} />, onClick: () => setConnectTarget({ vmid: r.vmid, ip: r.ip, hostname: r.name || `VMID ${r.vmid}` }) },
+                  { key: "edit", label: "Edit specs", icon: <IconEdit size={15} />, onClick: () => setEditTarget(r) },
+                  r.expiresAt && { key: "renew", label: "Renew / extend", icon: <IconCalendarPlus size={15} />, onClick: () => setExtendTarget(r) },
+                  r.type === "vm" && { key: "snapshot", label: "Snapshot", icon: <IconCamera size={15} />, onClick: () => setSnapshotTarget(r) },
+                  r.type === "vm" && { key: "backup", label: "Configure backup", icon: <IconArchive size={15} />, onClick: () => setBackupTarget(r) },
+                  isAdmin && { key: "delete", label: "Delete", icon: <IconTrash size={15} />, danger: true, onClick: () => act(r, "delete") },
+                ].filter(Boolean);
 
                 return (
                   <tr key={`${r.type}-${r.vmid}`}>
@@ -250,25 +264,10 @@ export default function Resources() {
                           <span className="muted" style={{ fontSize: 12 }}><span className="spinner" style={{ width: 12, height: 12 }} /> {busy}…</span>
                         ) : (
                           <>
-                            {/* Fixed actions — always present and in a stable
-                                order (Power always sits in the 4th slot) so the
-                                row doesn't reshuffle with power state. */}
-                            <button className="icon-btn icon-btn-accent" title="Edit specs" onClick={() => setEditTarget(r)}><IconEdit /></button>
-                            {isAdmin && (
-                              <>
-                                <button className="icon-btn" title="Extend expiry" onClick={() => setExtendTarget(r)}><IconCalendarPlus /></button>
-                                <button className="icon-btn icon-btn-danger" title="Delete" onClick={() => act(r, "delete")}><IconTrash /></button>
-                              </>
-                            )}
+                            {/* Three consolidated controls: Power · Actions · Info(tags) */}
                             <PowerMenu items={powerItems} />
-                            {/* Dynamic action — only when reachable. */}
-                            {running && r.ip && (
-                              <button
-                                className="icon-btn icon-btn-ok"
-                                title="Connect"
-                                onClick={() => setConnectTarget({ vmid: r.vmid, ip: r.ip, hostname: r.name || `VMID ${r.vmid}` })}
-                              ><IconTerminal /></button>
-                            )}
+                            <RowMenu icon={<IconActions />} title="Actions" items={actionItems} />
+                            <TagsMenu resource={r} onChanged={() => setTimeout(load, 600)} />
                           </>
                         )}
                       </div>
@@ -311,6 +310,21 @@ export default function Resources() {
           ip={connectTarget.ip}
           hostname={connectTarget.hostname}
           onClose={() => setConnectTarget(null)}
+        />
+      )}
+
+      {snapshotTarget && (
+        <SnapshotModal
+          resource={snapshotTarget}
+          onClose={() => setSnapshotTarget(null)}
+          onChanged={() => setTimeout(load, 1200)}
+        />
+      )}
+
+      {backupTarget && (
+        <BackupModal
+          resource={backupTarget}
+          onClose={() => setBackupTarget(null)}
         />
       )}
     </div>

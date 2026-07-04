@@ -8,7 +8,7 @@ import { ownerTags } from "./tags.js";
 import { waitForPort } from "./portProbe.js";
 import { generatePassword } from "./passwordGen.js";
 import { runSsh } from "./sshRunner.js";
-import { userSetupCommands, packageInstallCommand, aiTroubleshoot } from "./aiOps.js";
+import { hostnameSetupCommand, userSetupCommands, packageInstallCommand, aiTroubleshoot } from "./aiOps.js";
 import { executeStep, isSystemConfigured } from "./internalProvisioningApis.js";
 import { findInternalTemplate } from "../config/internalCatalog.js";
 import { createStepTracker, DEFAULT_AGENTS } from "./deploymentSteps.js";
@@ -191,15 +191,24 @@ export async function runVmJob(jobId, payload) {
     const sshOpts = { host: ip, port: sshPort, username: rootUser, password: rootPass };
     const allStepResults = [];
 
-    // --- Initial setup: first-boot init + create the user account ---
+    // --- Initial setup: first-boot init, hostname, and the user account ---
+    // We assign the hostname and create the user over SSH (not via cloud-init),
+    // since cloud-init doesn't apply these reliably across every template. The
+    // generated password is surfaced to the requester in the summary below.
     tracker.start("initial_setup");
     const generatedPassword = username ? generatePassword() : null;
+    const hostCmd = hostnameSetupCommand({ hostname });
     const initCmds = [
       { name: "wait for cloud-init", cmd: "cloud-init status --wait 2>/dev/null || true" },
+      ...(hostCmd ? [{ name: `set hostname ${hostname}`, cmd: hostCmd }] : []),
       ...userSetupCommands({ username, password: generatedPassword, sudo: sudoAccess }),
     ];
     allStepResults.push(...await runCommands(initCmds, sshOpts, { osName: tpl.name, packageManager }));
-    tracker.done("initial_setup", { done: username ? `Initial setup done — account "${username}" created` : "Initial setup complete" });
+    tracker.done("initial_setup", {
+      done: username
+        ? `Hostname set to "${hostname}" · account "${username}" created`
+        : `Hostname set to "${hostname}"`,
+    });
 
     // --- Security baseline: Defender, OMI Client, Guardicore (best-effort) ---
     tracker.start("default_packages");

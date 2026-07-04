@@ -34,6 +34,16 @@ export const getMyPreferences = () => api.get("/auth/preferences").then((r) => r
 export const updateMyPreferences = (preferences) =>
   api.put("/auth/preferences", { preferences }).then((r) => r.data);
 
+// --- Personal Access Tokens ---
+export const listPats = () => api.get("/auth/pats").then((r) => r.data);
+export const createPat = (p) => api.post("/auth/pats", p).then((r) => r.data);
+export const revokePat = (id) => api.delete(`/auth/pats/${id}`).then((r) => r.data);
+
+// --- Infrastructure-as-Code export ---
+export const getIacTools = () => api.get("/catalog/iac/tools").then((r) => r.data);
+export const getIacTemplate = ({ kind, id, tool }) =>
+  api.get("/catalog/iac", { params: { kind, id, tool } }).then((r) => r.data);
+
 // --- Catalog & provisioning ---
 export const getVmTemplates = () => api.get("/catalog/vm-templates").then((r) => r.data);
 export const getContainerTemplates = () => api.get("/catalog/container-templates").then((r) => r.data);
@@ -46,6 +56,7 @@ export const provisionInternal = (p) => api.post("/provision/internal", p).then(
 export const provisionContainer = (p) => api.post("/provision/container", p).then((r) => r.data);
 export const provisionStack = (p) => api.post("/provision/stack", p).then((r) => r.data);
 export const getProvisionRequests = () => api.get("/requests").then((r) => r.data);
+export const getRequestImpact = (id) => api.get(`/requests/${id}/impact`).then((r) => r.data);
 export const approveProvisionRequest = (id) => api.post(`/requests/${id}/approve`).then((r) => r.data);
 export const rejectProvisionRequest = (id, reason) =>
   api.post(`/requests/${id}/reject`, { reason }).then((r) => r.data);
@@ -58,8 +69,8 @@ export const getJobs = () => api.get("/jobs").then((r) => r.data);
 export const getK8sContext = () => api.get("/k3s/context").then((r) => r.data);
 export const getK8sNamespaces = () => api.get("/k3s/namespaces").then((r) => r.data);
 export const createK8sNamespace = (p) => api.post("/k3s/namespaces", p).then((r) => r.data);
-export const deleteK8sNamespace = (name) =>
-  api.delete(`/k3s/namespaces/${encodeURIComponent(name)}`).then((r) => r.data);
+export const deleteK8sNamespace = (name, force = false) =>
+  api.delete(`/k3s/namespaces/${encodeURIComponent(name)}${force ? "?force=true" : ""}`).then((r) => r.data);
 export const getK8sPods = (ns) =>
   api.get(`/k3s/namespaces/${encodeURIComponent(ns)}/pods`).then((r) => r.data);
 export const getK8sDeployments = (ns) =>
@@ -82,8 +93,46 @@ export const resourceAction = (type, vmid, action) =>
   api.post(`/resources/${type}/${vmid}/${action}`).then((r) => r.data);
 export const editResource = (type, vmid, specs) =>
   api.put(`/resources/${type}/${vmid}/config`, specs).then((r) => r.data);
+// Decide a resize: returns { status: "reboot_required" } for small changes, or
+// { status: "pending_approval", requestId } when it exceeds the size policy.
+export const resizeResource = (type, vmid, body) =>
+  api.post(`/resources/${type}/${vmid}/resize`, body).then((r) => r.data);
+// Owner/admin confirms the reboot after an approved resize was applied.
+export const confirmResizeReboot = (requestId) =>
+  api.post(`/requests/${requestId}/confirm-reboot`).then((r) => r.data);
 export const extendResource = (type, vmid, days) =>
   api.post(`/resources/${type}/${vmid}/extend`, days != null ? { days } : {}).then((r) => r.data);
+export const getExpiringResources = (withinDays = 7) =>
+  api.get("/notifications/expiring", { params: { withinDays } }).then((r) => r.data);
+
+// --- Notifications (bell) ---
+export const getNotifications = () => api.get("/notifications/inbox").then((r) => r.data);
+export const markNotificationRead = (id) => api.post(`/notifications/${id}/read`).then((r) => r.data);
+export const markAllNotificationsRead = () => api.post("/notifications/read-all").then((r) => r.data);
+
+// --- Snapshots & backups ---
+export const getSnapshots = (type, vmid) =>
+  api.get(`/resources/${type}/${vmid}/snapshots`).then((r) => r.data);
+export const createSnapshot = (type, vmid, body) =>
+  api.post(`/resources/${type}/${vmid}/snapshots`, body).then((r) => r.data);
+export const rollbackSnapshot = (type, vmid, snap) =>
+  api.post(`/resources/${type}/${vmid}/snapshots/${encodeURIComponent(snap)}/rollback`).then((r) => r.data);
+export const deleteSnapshot = (type, vmid, snap) =>
+  api.delete(`/resources/${type}/${vmid}/snapshots/${encodeURIComponent(snap)}`).then((r) => r.data);
+export const getBackupConfig = (type, vmid) =>
+  api.get(`/resources/${type}/${vmid}/backup`).then((r) => r.data);
+export const saveBackupConfig = (type, vmid, cfg) =>
+  api.post(`/resources/${type}/${vmid}/backup`, cfg).then((r) => r.data);
+export const deleteBackupConfig = (type, vmid) =>
+  api.delete(`/resources/${type}/${vmid}/backup`).then((r) => r.data);
+export const runBackupNow = (type, vmid, cfg) =>
+  api.post(`/resources/${type}/${vmid}/backup/run`, cfg).then((r) => r.data);
+
+// --- Tags ---
+export const setResourceTags = (type, vmid, tags) =>
+  api.put(`/resources/${type}/${vmid}/tags`, { tags }).then((r) => r.data);
+export const autoTagResource = (type, vmid, name) =>
+  api.post(`/resources/${type}/${vmid}/autotag`, name ? { name } : {}).then((r) => r.data);
 
 // --- Admin: mappings (templates + networks) ---
 export const getMappings = () => api.get("/mappings").then((r) => r.data);
@@ -101,6 +150,8 @@ export const getSettings = () => api.get("/settings").then((r) => r.data);
 export const updateSettings = (values) => api.put("/settings", { values }).then((r) => r.data);
 export const testProxmoxConnection = () => api.post("/settings/proxmox/test").then((r) => r.data);
 export const testK3sConnection = () => api.post("/settings/k3s/test").then((r) => r.data);
+export const testServiceNowConnection = () => api.post("/settings/servicenow/test").then((r) => r.data);
+export const testIpamConnection = () => api.post("/settings/ipam/test").then((r) => r.data);
 
 // --- Admin: users & audit ---
 export const getUsers = () => api.get("/users").then((r) => r.data);

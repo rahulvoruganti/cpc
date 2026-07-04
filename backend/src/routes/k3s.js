@@ -134,15 +134,23 @@ router.post("/k3s/namespaces", async (req, res) => {
   } catch (e) { RES(res, e); }
 });
 
-// Delete a namespace (owner or admin only).
+// Delete a namespace (owner or admin only). ?force=true also clears finalizers
+// to force-terminate a namespace stuck in "Terminating".
 router.delete("/k3s/namespaces/:name", async (req, res) => {
+  const force = String(req.query.force) === "true";
   try {
     const ns = await requireVisibleNs(req.user, req.params.name);
     if (!isOwnerOrAdmin(req.user, ns)) {
       return res.status(403).json({ error: "Only the owner or an admin can delete this namespace" });
     }
-    await k8s.deleteNamespace(req.params.name);
-    logAudit({ actor: req.user, action: "k8s.namespace.delete", target: req.params.name });
+    if (force) {
+      await k8s.deleteNamespace(req.params.name).catch(() => {}); // may already be terminating
+      await k8s.forceFinalizeNamespace(req.params.name);
+      logAudit({ actor: req.user, action: "k8s.namespace.force-terminate", target: req.params.name });
+    } else {
+      await k8s.deleteNamespace(req.params.name);
+      logAudit({ actor: req.user, action: "k8s.namespace.delete", target: req.params.name });
+    }
     res.json({ ok: true });
   } catch (e) { RES(res, e); }
 });
