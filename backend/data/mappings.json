@@ -11,8 +11,8 @@
       "packageManager": "apt",
       "updatedAt": "2026-07-04T05:18:12.125Z"
     },
-    "116": {
-      "osName": "MEAN",
+    "114": {
+      "osName": "LAMP Stack",
       "cloudInitFile": "rhel-temp.yaml",
       "cloudInitSource": "snippet",
       "credUser": "root",
@@ -20,7 +20,29 @@
       "connectivity": "ssh",
       "port": 22,
       "packageManager": "yum",
-      "updatedAt": "2026-07-04T05:51:53.612Z"
+      "updatedAt": "2026-07-04T06:47:27.520Z"
+    },
+    "115": {
+      "osName": "MERN Stack",
+      "cloudInitFile": "rhel-temp.yaml",
+      "cloudInitSource": "snippet",
+      "credUser": "root",
+      "credPassword": "Colruyt@123",
+      "connectivity": "ssh",
+      "port": 22,
+      "packageManager": "yum",
+      "updatedAt": "2026-07-04T06:46:54.898Z"
+    },
+    "116": {
+      "osName": "MEAN Stack",
+      "cloudInitFile": "rhel-temp.yaml",
+      "cloudInitSource": "snippet",
+      "credUser": "root",
+      "credPassword": "Colruyt@123",
+      "connectivity": "ssh",
+      "port": 22,
+      "packageManager": "yum",
+      "updatedAt": "2026-07-04T06:47:48.058Z"
     },
     "200": {
       "osName": "RHEL9",

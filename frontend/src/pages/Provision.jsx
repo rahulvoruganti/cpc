@@ -314,7 +314,7 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, onS
   );
 }
 
-export default function Provision() {
+export default function Provision({ embedded = false }) {
   const [vmTemplates, setVmTemplates] = useState([]);
   const [containerTemplates, setContainerTemplates] = useState([]);
   const [stacks, setStacks] = useState([]);
@@ -421,13 +421,18 @@ export default function Provision() {
         });
       }
 
+      setSelected(null);
+
+      // A deployment was created — pop open the floating deployment monitor
+      // (maximized) so the user watches live progress without leaving the page.
+      // Requests that still need approval have no job yet, so fall back to a
+      // notice.
       if (result?.job?.id) {
-        setRequestNotice("Provisioning started — follow the live progress in the deployment monitor (bottom-right).");
+        setRequestNotice("Provisioning started — follow the live progress in the deployment monitor.");
+        window.dispatchEvent(new CustomEvent("cpc:open-deployment-monitor", { detail: { jobId: result.job.id } }));
       } else if (result?.request?.id) {
         setRequestNotice(`Request ${result.request.id} submitted with status ${result.request.status}.`);
       }
-
-      setSelected(null);
     } catch (e) {
       alert(e.response?.data?.error || e.message);
     } finally {
@@ -436,10 +441,10 @@ export default function Provision() {
   };
 
   return (
-    <div className="page">
+    <div className={embedded ? "" : "page"}>
       <div className="page-head">
         <div className="eyebrow">Catalog</div>
-        <h1>Provision workspace</h1>
+        <h1>Virtual machines &amp; stacks</h1>
         <p>Search and select from catalog entries, then configure and launch from the side panel.</p>
       </div>
 

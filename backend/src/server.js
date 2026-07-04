@@ -13,6 +13,7 @@ import userRoutes from "./routes/users.js";
 import resourceRoutes from "./routes/resources.js";
 import auditRoutes from "./routes/audit.js";
 import mappingRoutes from "./routes/mappings.js";
+import k3sRoutes from "./routes/k3s.js";
 import { attachTerminalWs } from "./routes/terminal.js";
 import { startExpiryEnforcer } from "./services/expiryEnforcer.js";
 
@@ -29,6 +30,7 @@ app.use("/api", resourceRoutes);
 app.use("/api", auditRoutes);
 app.use("/api", mappingRoutes);
 app.use("/api", settingsRoutes);
+app.use("/api", k3sRoutes);
 
 app.get("/health", (req, res) => res.json({ ok: true, product: "Colruyt Private Cloud" }));
 

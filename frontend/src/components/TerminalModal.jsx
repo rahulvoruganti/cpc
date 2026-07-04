@@ -85,7 +85,14 @@ function SshTerminal({ vmid, ip, hostname, credentials, onClose }) {
     const ws = new WebSocket(wsUrl);
     ws.binaryType = "arraybuffer";
 
+    // React StrictMode runs effects mount→cleanup→mount in dev. If cleanup fires
+    // while the socket is still CONNECTING, calling ws.close() throws the
+    // "closed before the connection is established" warning and aborts the handshake.
+    // Track disposal and, if we're torn down mid-connect, close cleanly on open instead.
+    let disposed = false;
+
     ws.onopen = () => {
+      if (disposed) { ws.close(); return; }
       // Send credentials as first message before any input
       ws.send(JSON.stringify({
         type: "auth",
@@ -123,8 +130,13 @@ function SshTerminal({ vmid, ip, hostname, credentials, onClose }) {
     resizeObserver.observe(containerRef.current);
 
     return () => {
+      disposed = true;
       resizeObserver.disconnect();
-      ws.close();
+      // Only close a socket that has actually opened; a CONNECTING socket is
+      // closed by the onopen handler above once the handshake completes.
+      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CLOSING) {
+        ws.close();
+      }
       term.dispose();
     };
   }, [vmid, ip, hostname, credentials]);

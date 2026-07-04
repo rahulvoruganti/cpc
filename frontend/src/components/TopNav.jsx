@@ -82,8 +82,9 @@ export default function TopNav() {
 
   const links = [
     { to: "/", label: "Dashboard", end: true },
-    { to: "/provision", label: "Provision" },
+    { to: "/provision", label: "Provisioning" },
     { to: "/resources", label: "Resources" },
+    { to: "/deployments", label: "Deployments" },
     { to: "/requests", label: "Requests" },
   ];
   if (isAdmin) {

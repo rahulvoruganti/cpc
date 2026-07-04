@@ -2984,7 +2984,16 @@
       },
       "status": "failed",
       "message": "Interrupted",
-      "resources": [],
+      "resources": [
+        {
+          "vmid": "106",
+          "hostname": "prakash",
+          "type": "vm",
+          "ip": null,
+          "environment": "vmbr30",
+          "sshReady": false
+        }
+      ],
       "error": "Interrupted by a server restart before completion",
       "logs": [
         {
@@ -3038,14 +3047,54 @@
           "message": "Laying down the golden OS image…"
         },
         {
-          "ts": "2026-07-04T06:19:42.432Z",
+          "ts": "2026-07-04T06:19:53.278Z",
+          "status": "provisioning",
+          "message": "MEAN image deployed"
+        },
+        {
+          "ts": "2026-07-04T06:19:53.281Z",
+          "status": "provisioning",
+          "message": "Dialing in your CPU, memory and storage…"
+        },
+        {
+          "ts": "2026-07-04T06:19:53.450Z",
+          "status": "provisioning",
+          "message": "Allocated 2 vCPU · 2 GB RAM · 50 GB disk"
+        },
+        {
+          "ts": "2026-07-04T06:19:53.453Z",
+          "status": "provisioning",
+          "message": "Wiring your machine into the network…"
+        },
+        {
+          "ts": "2026-07-04T06:19:54.087Z",
+          "status": "provisioning",
+          "message": "Attached to \"vmbr30\" (address leased on boot)"
+        },
+        {
+          "ts": "2026-07-04T06:19:54.107Z",
+          "status": "provisioning",
+          "message": "Powering on your virtual machine…"
+        },
+        {
+          "ts": "2026-07-04T06:19:54.176Z",
+          "status": "provisioning",
+          "message": "Powered on"
+        },
+        {
+          "ts": "2026-07-04T06:19:54.180Z",
+          "status": "provisioning",
+          "message": "Waiting for the system to come alive…"
+        },
+        {
+          "ts": "2026-07-04T06:23:49.302Z",
           "status": "failed",
           "message": "Interrupted by a server restart before completion",
           "error": "Interrupted by a server restart before completion"
         }
       ],
       "createdAt": "2026-07-04T06:17:48.186Z",
-      "updatedAt": "2026-07-04T06:19:42.432Z",
+      "updatedAt": "2026-07-04T06:23:49.302Z",
       "steps": [
         {
           "key": "submitted",
@@ -3099,11 +3148,887 @@
           "key": "deploy_os",
           "label": "Deploying the OS",
           "active": "Laying down the golden OS image…",
+          "done": "MEAN image deployed",
+          "group": "build",
+          "state": "done",
+          "etaSec": 50,
+          "startedAt": "2026-07-04T06:17:48.484Z",
+          "endedAt": "2026-07-04T06:19:53.275Z",
+          "tookSec": 125
+        },
+        {
+          "key": "allocate_resources",
+          "label": "Allocating resources",
+          "active": "Dialing in your CPU, memory and storage…",
+          "done": "Allocated 2 vCPU · 2 GB RAM · 50 GB disk",
+          "group": "build",
+          "state": "done",
+          "etaSec": 19,
+          "startedAt": "2026-07-04T06:19:53.281Z",
+          "endedAt": "2026-07-04T06:19:53.448Z",
+          "tookSec": 0
+        },
+        {
+          "key": "assign_ip",
+          "label": "Assigning IP address",
+          "active": "Wiring your machine into the network…",
+          "done": "Attached to \"vmbr30\" (address leased on boot)",
+          "group": "build",
+          "state": "done",
+          "etaSec": 15,
+          "startedAt": "2026-07-04T06:19:53.453Z",
+          "endedAt": "2026-07-04T06:19:54.085Z",
+          "tookSec": 1
+        },
+        {
+          "key": "power_on",
+          "label": "Powering on",
+          "active": "Powering on your virtual machine…",
+          "done": "Powered on",
+          "group": "boot",
+          "state": "done",
+          "etaSec": 13,
+          "startedAt": "2026-07-04T06:19:54.107Z",
+          "endedAt": "2026-07-04T06:19:54.174Z",
+          "tookSec": 0
+        },
+        {
+          "key": "system_startup",
+          "label": "System startup",
+          "active": "Waiting for the system to come alive…",
+          "done": "System is online",
+          "group": "boot",
+          "state": "active",
+          "etaSec": 113,
+          "startedAt": "2026-07-04T06:19:54.180Z",
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "initial_setup",
+          "label": "Initial setup",
+          "active": "Running first-boot initialization and creating your account…",
+          "done": "Initial setup complete",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 32,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "default_packages",
+          "label": "Security baseline",
+          "active": "Hardening with the Colruyt baseline — Defender, OMI Client, Guardicore…",
+          "done": "Security baseline installed",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 57,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "requested_packages",
+          "label": "Requested software",
+          "active": "Installing your requested software…",
+          "done": "Requested software installed",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 44,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "validate",
+          "label": "Validation",
+          "active": "Running final health checks on your server…",
+          "done": "Server validated end-to-end",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 19,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "summarize",
+          "label": "Summary",
+          "active": "Wrapping up and preparing your summary…",
+          "done": "All done — your server is ready 🎉",
+          "group": "done",
+          "state": "pending",
+          "etaSec": 4,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        }
+      ]
+    },
+    {
+      "id": "F_q-D0eJZF",
+      "type": "vm",
+      "payload": {
+        "templateId": "tpl-100",
+        "hostname": "monitor",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "username": "test",
+        "sudoAccess": false,
+        "environment": "vmbr190",
+        "requestedBy": "admin",
+        "requestId": "G-0Mcz4RXNJe",
+        "autoApproved": true,
+        "approvedBy": null
+      },
+      "status": "failed",
+      "message": "Interrupted",
+      "resources": [
+        {
+          "vmid": "107",
+          "hostname": "monitor",
+          "type": "vm",
+          "ip": null,
+          "environment": "vmbr190",
+          "sshReady": false
+        }
+      ],
+      "error": "Interrupted by a server restart before completion",
+      "logs": [
+        {
+          "ts": "2026-07-04T06:31:05.047Z",
+          "status": "pending",
+          "message": "Queued"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.068Z",
+          "status": "provisioning",
+          "message": "Receiving your new-server request…"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.083Z",
+          "status": "provisioning",
+          "message": "New server request submitted"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.103Z",
+          "status": "provisioning",
+          "message": "Checking approval requirements…"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.130Z",
+          "status": "provisioning",
+          "message": "Standard request — auto-approved"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.151Z",
+          "status": "provisioning",
+          "message": "Locking in the approval…"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.179Z",
+          "status": "provisioning",
+          "message": "Request approved — kicking off the build"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.200Z",
+          "status": "provisioning",
+          "message": "Carving out your virtual machine on the cluster…"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.382Z",
+          "status": "provisioning",
+          "message": "Virtual machine #107 provisioned"
+        },
+        {
+          "ts": "2026-07-04T06:31:05.387Z",
+          "status": "provisioning",
+          "message": "Laying down the golden OS image…"
+        },
+        {
+          "ts": "2026-07-04T06:31:36.092Z",
+          "status": "provisioning",
+          "message": "Alpine image deployed"
+        },
+        {
+          "ts": "2026-07-04T06:31:36.097Z",
+          "status": "provisioning",
+          "message": "Dialing in your CPU, memory and storage…"
+        },
+        {
+          "ts": "2026-07-04T06:31:36.280Z",
+          "status": "provisioning",
+          "message": "Allocated 1 vCPU · 1 GB RAM · 50 GB disk"
+        },
+        {
+          "ts": "2026-07-04T06:31:36.284Z",
+          "status": "provisioning",
+          "message": "Wiring your machine into the network…"
+        },
+        {
+          "ts": "2026-07-04T06:31:37.001Z",
+          "status": "provisioning",
+          "message": "Attached to \"vmbr190\" (address leased on boot)"
+        },
+        {
+          "ts": "2026-07-04T06:31:37.026Z",
+          "status": "provisioning",
+          "message": "Powering on your virtual machine…"
+        },
+        {
+          "ts": "2026-07-04T06:31:37.116Z",
+          "status": "provisioning",
+          "message": "Powered on"
+        },
+        {
+          "ts": "2026-07-04T06:31:37.124Z",
+          "status": "provisioning",
+          "message": "Waiting for the system to come alive…"
+        },
+        {
+          "ts": "2026-07-04T06:38:22.411Z",
+          "status": "failed",
+          "message": "Interrupted by a server restart before completion",
+          "error": "Interrupted by a server restart before completion"
+        }
+      ],
+      "createdAt": "2026-07-04T06:31:05.047Z",
+      "updatedAt": "2026-07-04T06:38:22.411Z",
+      "steps": [
+        {
+          "key": "submitted",
+          "label": "Request submitted",
+          "active": "Receiving your new-server request…",
+          "done": "New server request submitted",
+          "group": "request",
+          "state": "done",
+          "etaSec": 3,
+          "startedAt": "2026-07-04T06:31:05.068Z",
+          "endedAt": "2026-07-04T06:31:05.079Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approval",
+          "label": "Approvals",
+          "active": "Checking approval requirements…",
+          "done": "Standard request — auto-approved",
+          "group": "request",
+          "state": "done",
+          "etaSec": 3,
+          "startedAt": "2026-07-04T06:31:05.103Z",
+          "endedAt": "2026-07-04T06:31:05.128Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approved",
+          "label": "Approved",
+          "active": "Locking in the approval…",
+          "done": "Request approved — kicking off the build",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:31:05.151Z",
+          "endedAt": "2026-07-04T06:31:05.176Z",
+          "tookSec": 0
+        },
+        {
+          "key": "provision_vm",
+          "label": "Provisioning the VM",
+          "active": "Carving out your virtual machine on the cluster…",
+          "done": "Virtual machine #107 provisioned",
+          "group": "build",
+          "state": "done",
+          "etaSec": 57,
+          "startedAt": "2026-07-04T06:31:05.200Z",
+          "endedAt": "2026-07-04T06:31:05.377Z",
+          "tookSec": 0
+        },
+        {
+          "key": "deploy_os",
+          "label": "Deploying the OS",
+          "active": "Laying down the golden OS image…",
+          "done": "Alpine image deployed",
+          "group": "build",
+          "state": "done",
+          "etaSec": 50,
+          "startedAt": "2026-07-04T06:31:05.387Z",
+          "endedAt": "2026-07-04T06:31:36.086Z",
+          "tookSec": 31
+        },
+        {
+          "key": "allocate_resources",
+          "label": "Allocating resources",
+          "active": "Dialing in your CPU, memory and storage…",
+          "done": "Allocated 1 vCPU · 1 GB RAM · 50 GB disk",
+          "group": "build",
+          "state": "done",
+          "etaSec": 19,
+          "startedAt": "2026-07-04T06:31:36.097Z",
+          "endedAt": "2026-07-04T06:31:36.278Z",
+          "tookSec": 0
+        },
+        {
+          "key": "assign_ip",
+          "label": "Assigning IP address",
+          "active": "Wiring your machine into the network…",
+          "done": "Attached to \"vmbr190\" (address leased on boot)",
+          "group": "build",
+          "state": "done",
+          "etaSec": 15,
+          "startedAt": "2026-07-04T06:31:36.284Z",
+          "endedAt": "2026-07-04T06:31:36.998Z",
+          "tookSec": 1
+        },
+        {
+          "key": "power_on",
+          "label": "Powering on",
+          "active": "Powering on your virtual machine…",
+          "done": "Powered on",
+          "group": "boot",
+          "state": "done",
+          "etaSec": 13,
+          "startedAt": "2026-07-04T06:31:37.026Z",
+          "endedAt": "2026-07-04T06:31:37.111Z",
+          "tookSec": 0
+        },
+        {
+          "key": "system_startup",
+          "label": "System startup",
+          "active": "Waiting for the system to come alive…",
+          "done": "System is online",
+          "group": "boot",
+          "state": "active",
+          "etaSec": 113,
+          "startedAt": "2026-07-04T06:31:37.124Z",
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "initial_setup",
+          "label": "Initial setup",
+          "active": "Running first-boot initialization and creating your account…",
+          "done": "Initial setup complete",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 32,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "default_packages",
+          "label": "Security baseline",
+          "active": "Hardening with the Colruyt baseline — Defender, OMI Client, Guardicore…",
+          "done": "Security baseline installed",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 57,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "requested_packages",
+          "label": "Requested software",
+          "active": "Installing your requested software…",
+          "done": "Requested software installed",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 44,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "validate",
+          "label": "Validation",
+          "active": "Running final health checks on your server…",
+          "done": "Server validated end-to-end",
+          "group": "config",
+          "state": "pending",
+          "etaSec": 19,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "summarize",
+          "label": "Summary",
+          "active": "Wrapping up and preparing your summary…",
+          "done": "All done — your server is ready 🎉",
+          "group": "done",
+          "state": "pending",
+          "etaSec": 4,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        }
+      ]
+    },
+    {
+      "id": "L_tP5FrbMH",
+      "type": "vm",
+      "payload": {
+        "templateId": "tpl-100",
+        "hostname": "test",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "username": "test",
+        "sudoAccess": false,
+        "environment": "vmbr190",
+        "requestedBy": "admin",
+        "requestId": "nee5DKJP7M76",
+        "autoApproved": true,
+        "approvedBy": null
+      },
+      "status": "ready",
+      "message": "Your VM started but never reported a network address (is the guest agent installed?). It was created, but is unreachable.",
+      "resources": [
+        {
+          "vmid": "108",
+          "hostname": "test",
+          "type": "vm",
+          "ip": null,
+          "environment": "vmbr190",
+          "sshReady": false
+        }
+      ],
+      "error": null,
+      "logs": [
+        {
+          "ts": "2026-07-04T06:42:28.743Z",
+          "status": "pending",
+          "message": "Queued"
+        },
+        {
+          "ts": "2026-07-04T06:42:28.768Z",
+          "status": "provisioning",
+          "message": "Receiving your new-server request…"
+        },
+        {
+          "ts": "2026-07-04T06:42:28.780Z",
+          "status": "provisioning",
+          "message": "New server request submitted"
+        },
+        {
+          "ts": "2026-07-04T06:42:28.800Z",
+          "status": "provisioning",
+          "message": "Checking approval requirements…"
+        },
+        {
+          "ts": "2026-07-04T06:42:28.824Z",
+          "status": "provisioning",
+          "message": "Standard request — auto-approved"
+        },
+        {
+          "ts": "2026-07-04T06:42:28.846Z",
+          "status": "provisioning",
+          "message": "Locking in the approval…"
+        },
+        {
+          "ts": "2026-07-04T06:42:28.874Z",
+          "status": "provisioning",
+          "message": "Request approved — kicking off the build"
+        },
+        {
+          "ts": "2026-07-04T06:42:28.892Z",
+          "status": "provisioning",
+          "message": "Carving out your virtual machine on the cluster…"
+        },
+        {
+          "ts": "2026-07-04T06:42:29.017Z",
+          "status": "provisioning",
+          "message": "Virtual machine #108 provisioned"
+        },
+        {
+          "ts": "2026-07-04T06:42:29.021Z",
+          "status": "provisioning",
+          "message": "Laying down the golden OS image…"
+        },
+        {
+          "ts": "2026-07-04T06:42:57.893Z",
+          "status": "provisioning",
+          "message": "Alpine image deployed"
+        },
+        {
+          "ts": "2026-07-04T06:42:57.897Z",
+          "status": "provisioning",
+          "message": "Dialing in your CPU, memory and storage…"
+        },
+        {
+          "ts": "2026-07-04T06:42:58.120Z",
+          "status": "provisioning",
+          "message": "Allocated 1 vCPU · 1 GB RAM · 50 GB disk"
+        },
+        {
+          "ts": "2026-07-04T06:42:58.125Z",
+          "status": "provisioning",
+          "message": "Wiring your machine into the network…"
+        },
+        {
+          "ts": "2026-07-04T06:42:58.802Z",
+          "status": "provisioning",
+          "message": "Attached to \"vmbr190\" (address leased on boot)"
+        },
+        {
+          "ts": "2026-07-04T06:42:58.832Z",
+          "status": "provisioning",
+          "message": "Powering on your virtual machine…"
+        },
+        {
+          "ts": "2026-07-04T06:42:58.928Z",
+          "status": "provisioning",
+          "message": "Powered on"
+        },
+        {
+          "ts": "2026-07-04T06:42:58.938Z",
+          "status": "provisioning",
+          "message": "Waiting for the system to come alive…"
+        },
+        {
+          "ts": "2026-07-04T06:53:09.301Z",
+          "status": "provisioning",
+          "message": "Your VM started but never reported a network address (is the guest agent installed?). It was created, but is unreachable."
+        },
+        {
+          "ts": "2026-07-04T06:53:09.308Z",
+          "status": "ready",
+          "message": "Your VM started but never reported a network address (is the guest agent installed?). It was created, but is unreachable."
+        }
+      ],
+      "createdAt": "2026-07-04T06:42:28.743Z",
+      "updatedAt": "2026-07-04T06:53:09.308Z",
+      "steps": [
+        {
+          "key": "submitted",
+          "label": "Request submitted",
+          "active": "Receiving your new-server request…",
+          "done": "New server request submitted",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:42:28.768Z",
+          "endedAt": "2026-07-04T06:42:28.776Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approval",
+          "label": "Approvals",
+          "active": "Checking approval requirements…",
+          "done": "Standard request — auto-approved",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:42:28.800Z",
+          "endedAt": "2026-07-04T06:42:28.822Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approved",
+          "label": "Approved",
+          "active": "Locking in the approval…",
+          "done": "Request approved — kicking off the build",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:42:28.846Z",
+          "endedAt": "2026-07-04T06:42:28.871Z",
+          "tookSec": 0
+        },
+        {
+          "key": "provision_vm",
+          "label": "Provisioning the VM",
+          "active": "Carving out your virtual machine on the cluster…",
+          "done": "Virtual machine #108 provisioned",
+          "group": "build",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:42:28.892Z",
+          "endedAt": "2026-07-04T06:42:29.013Z",
+          "tookSec": 0
+        },
+        {
+          "key": "deploy_os",
+          "label": "Deploying the OS",
+          "active": "Laying down the golden OS image…",
+          "done": "Alpine image deployed",
+          "group": "build",
+          "state": "done",
+          "etaSec": 39,
+          "startedAt": "2026-07-04T06:42:29.021Z",
+          "endedAt": "2026-07-04T06:42:57.889Z",
+          "tookSec": 29
+        },
+        {
+          "key": "allocate_resources",
+          "label": "Allocating resources",
+          "active": "Dialing in your CPU, memory and storage…",
+          "done": "Allocated 1 vCPU · 1 GB RAM · 50 GB disk",
+          "group": "build",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:42:57.897Z",
+          "endedAt": "2026-07-04T06:42:58.117Z",
+          "tookSec": 0
+        },
+        {
+          "key": "assign_ip",
+          "label": "Assigning IP address",
+          "active": "Wiring your machine into the network…",
+          "done": "Attached to \"vmbr190\" (address leased on boot)",
+          "group": "build",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:42:58.125Z",
+          "endedAt": "2026-07-04T06:42:58.797Z",
+          "tookSec": 1
+        },
+        {
+          "key": "power_on",
+          "label": "Powering on",
+          "active": "Powering on your virtual machine…",
+          "done": "Powered on",
+          "group": "boot",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:42:58.832Z",
+          "endedAt": "2026-07-04T06:42:58.923Z",
+          "tookSec": 0
+        },
+        {
+          "key": "system_startup",
+          "label": "System startup",
+          "active": "Waiting for the system to come alive…",
+          "done": "System is online",
+          "group": "boot",
+          "state": "failed",
+          "etaSec": 113,
+          "startedAt": "2026-07-04T06:42:58.938Z",
+          "endedAt": "2026-07-04T06:53:09.301Z",
+          "tookSec": null
+        },
+        {
+          "key": "initial_setup",
+          "label": "Initial setup",
+          "active": "Running first-boot initialization and creating your account…",
+          "done": "Initial setup complete",
+          "group": "config",
+          "state": "skipped",
+          "etaSec": 32,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "default_packages",
+          "label": "Security baseline",
+          "active": "Hardening with the Colruyt baseline — Defender, OMI Client, Guardicore…",
+          "done": "Security baseline installed",
+          "group": "config",
+          "state": "skipped",
+          "etaSec": 57,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "requested_packages",
+          "label": "Requested software",
+          "active": "Installing your requested software…",
+          "done": "Requested software installed",
+          "group": "config",
+          "state": "skipped",
+          "etaSec": 44,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "validate",
+          "label": "Validation",
+          "active": "Running final health checks on your server…",
+          "done": "Server validated end-to-end",
+          "group": "config",
+          "state": "skipped",
+          "etaSec": 19,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        },
+        {
+          "key": "summarize",
+          "label": "Summary",
+          "active": "Wrapping up and preparing your summary…",
+          "done": "All done — your server is ready 🎉",
+          "group": "done",
+          "state": "skipped",
+          "etaSec": 4,
+          "startedAt": null,
+          "endedAt": null,
+          "tookSec": null
+        }
+      ]
+    },
+    {
+      "id": "eUoDG2T1MR",
+      "type": "vm",
+      "payload": {
+        "templateId": "tpl-100",
+        "hostname": "testinggggggggg",
+        "cpu": 1,
+        "memoryGB": 1,
+        "diskGB": 50,
+        "packages": [],
+        "packageSelection": {
+          "required": [],
+          "selected": [],
+          "effective": []
+        },
+        "username": "test",
+        "sudoAccess": false,
+        "environment": "vmbr0",
+        "requestedBy": "admin",
+        "requestId": "gsUbHRJQEuzE",
+        "autoApproved": true,
+        "approvedBy": null
+      },
+      "status": "failed",
+      "message": "Interrupted",
+      "resources": [],
+      "error": "Interrupted by a server restart before completion",
+      "logs": [
+        {
+          "ts": "2026-07-04T06:58:14.884Z",
+          "status": "pending",
+          "message": "Queued"
+        },
+        {
+          "ts": "2026-07-04T06:58:14.908Z",
+          "status": "provisioning",
+          "message": "Receiving your new-server request…"
+        },
+        {
+          "ts": "2026-07-04T06:58:14.923Z",
+          "status": "provisioning",
+          "message": "New server request submitted"
+        },
+        {
+          "ts": "2026-07-04T06:58:14.942Z",
+          "status": "provisioning",
+          "message": "Checking approval requirements…"
+        },
+        {
+          "ts": "2026-07-04T06:58:14.972Z",
+          "status": "provisioning",
+          "message": "Standard request — auto-approved"
+        },
+        {
+          "ts": "2026-07-04T06:58:14.995Z",
+          "status": "provisioning",
+          "message": "Locking in the approval…"
+        },
+        {
+          "ts": "2026-07-04T06:58:15.023Z",
+          "status": "provisioning",
+          "message": "Request approved — kicking off the build"
+        },
+        {
+          "ts": "2026-07-04T06:58:15.044Z",
+          "status": "provisioning",
+          "message": "Carving out your virtual machine on the cluster…"
+        },
+        {
+          "ts": "2026-07-04T06:58:15.518Z",
+          "status": "provisioning",
+          "message": "Virtual machine #109 provisioned"
+        },
+        {
+          "ts": "2026-07-04T06:58:15.521Z",
+          "status": "provisioning",
+          "message": "Laying down the golden OS image…"
+        },
+        {
+          "ts": "2026-07-04T06:58:23.227Z",
+          "status": "failed",
+          "message": "Interrupted by a server restart before completion",
+          "error": "Interrupted by a server restart before completion"
+        }
+      ],
+      "createdAt": "2026-07-04T06:58:14.884Z",
+      "updatedAt": "2026-07-04T06:58:23.227Z",
+      "steps": [
+        {
+          "key": "submitted",
+          "label": "Request submitted",
+          "active": "Receiving your new-server request…",
+          "done": "New server request submitted",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:58:14.907Z",
+          "endedAt": "2026-07-04T06:58:14.919Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approval",
+          "label": "Approvals",
+          "active": "Checking approval requirements…",
+          "done": "Standard request — auto-approved",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:58:14.942Z",
+          "endedAt": "2026-07-04T06:58:14.969Z",
+          "tookSec": 0
+        },
+        {
+          "key": "approved",
+          "label": "Approved",
+          "active": "Locking in the approval…",
+          "done": "Request approved — kicking off the build",
+          "group": "request",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:58:14.995Z",
+          "endedAt": "2026-07-04T06:58:15.020Z",
+          "tookSec": 0
+        },
+        {
+          "key": "provision_vm",
+          "label": "Provisioning the VM",
+          "active": "Carving out your virtual machine on the cluster…",
+          "done": "Virtual machine #109 provisioned",
+          "group": "build",
+          "state": "done",
+          "etaSec": 2,
+          "startedAt": "2026-07-04T06:58:15.044Z",
+          "endedAt": "2026-07-04T06:58:15.514Z",
+          "tookSec": 0
+        },
+        {
+          "key": "deploy_os",
+          "label": "Deploying the OS",
+          "active": "Laying down the golden OS image…",
           "done": "Operating system deployed",
           "group": "build",
           "state": "active",
-          "etaSec": 50,
-          "startedAt": "2026-07-04T06:17:48.484Z",
+          "etaSec": 38,
+          "startedAt": "2026-07-04T06:58:15.521Z",
           "endedAt": null,
           "tookSec": null
         },
@@ -3114,7 +4039,7 @@
           "done": "Requested resources allocated",
           "group": "build",
           "state": "pending",
-          "etaSec": 19,
+          "etaSec": 2,
           "startedAt": null,
           "endedAt": null,
           "tookSec": null
@@ -3126,7 +4051,7 @@
           "done": "Network attached (DHCP)",
           "group": "build",
           "state": "pending",
-          "etaSec": 15,
+          "etaSec": 2,
           "startedAt": null,
           "endedAt": null,
           "tookSec": null
@@ -3138,7 +4063,7 @@
           "done": "Powered on",
           "group": "boot",
           "state": "pending",
-          "etaSec": 13,
+          "etaSec": 2,
           "startedAt": null,
           "endedAt": null,
           "tookSec": null

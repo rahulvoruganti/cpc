@@ -53,6 +53,21 @@ export const rejectProvisionRequest = (id, reason) =>
 export const getJob = (id) => api.get(`/jobs/${id}`).then((r) => r.data);
 export const getJobs = () => api.get("/jobs").then((r) => r.data);
 
+// --- Container hosting (K3s / Kubernetes) ---
+export const getK8sContext = () => api.get("/k3s/context").then((r) => r.data);
+export const getK8sNamespaces = () => api.get("/k3s/namespaces").then((r) => r.data);
+export const createK8sNamespace = (p) => api.post("/k3s/namespaces", p).then((r) => r.data);
+export const deleteK8sNamespace = (name) =>
+  api.delete(`/k3s/namespaces/${encodeURIComponent(name)}`).then((r) => r.data);
+export const getK8sPods = (ns) =>
+  api.get(`/k3s/namespaces/${encodeURIComponent(ns)}/pods`).then((r) => r.data);
+export const getK8sDeployments = (ns) =>
+  api.get(`/k3s/namespaces/${encodeURIComponent(ns)}/deployments`).then((r) => r.data);
+export const createK8sDeployment = (ns, p) =>
+  api.post(`/k3s/namespaces/${encodeURIComponent(ns)}/deployments`, p).then((r) => r.data);
+export const deleteK8sDeployment = (ns, name) =>
+  api.delete(`/k3s/namespaces/${encodeURIComponent(ns)}/deployments/${encodeURIComponent(name)}`).then((r) => r.data);
+
 // --- Chat ---
 export const sendChatMessage = (p) => api.post("/chat", p).then((r) => r.data);
 export const getChatHistory = () => api.get("/chat/history").then((r) => r.data);

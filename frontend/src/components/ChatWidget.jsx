@@ -14,6 +14,7 @@ import {
 } from "../api/client.js";
 import TerminalModal from "./TerminalModal.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
+import { useLocation } from "react-router-dom";
 
 const GREETING = {
   role: "assistant",
@@ -388,7 +389,6 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
     return "Good evening";
   })();
   const [open, setOpen] = useState(false);
-  const [minimized, setMinimized] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   // Welcome bubble beside the icon. Shows once per page load / login — the
   // widget mounts at the app root and survives route changes, so this won't
@@ -407,6 +407,24 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
   const scrollRef = useRef(null);
   const inputRef = useRef(null);
   const prevCountRef = useRef(1);
+  const panelRef = useRef(null);
+  const location = useLocation();
+
+  // Collapse the chat to its bubble when the user navigates to another page, so
+  // it stays out of the way. Harmless while already closed.
+  useEffect(() => {
+    setOpen(false);
+  }, [location.pathname]);
+
+  // Collapse to the bubble when the user clicks anywhere outside the chat panel.
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e) => {
+      if (panelRef.current && !panelRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
 
   // Load persisted history once on mount.
   useEffect(() => {
@@ -544,18 +562,18 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
     const prev = prevCountRef.current;
     if (messages.length > prev) {
       const newest = messages[messages.length - 1];
-      if (newest?.role === "assistant" && (!open || minimized)) {
+      if (newest?.role === "assistant" && !open) {
         setUnreadCount((n) => n + 1);
       }
     }
     prevCountRef.current = messages.length;
-  }, [messages, open, minimized]);
+  }, [messages, open]);
 
   useEffect(() => {
-    if (open && !minimized) {
+    if (open) {
       setUnreadCount(0);
     }
-  }, [open, minimized]);
+  }, [open]);
 
   const pollJobInChat = (jobId) => {
     let lastStatus = null;
@@ -675,7 +693,6 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
               onClick={() => {
                 dismissWelcome();
                 setOpen(true);
-                setMinimized(false);
               }}
             >
               Start chatting
@@ -687,7 +704,6 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
           onClick={() => {
             dismissWelcome();
             setOpen(true);
-            setMinimized(false);
           }}
           aria-label="Open provisioning assistant"
           title="Provisioning Assistant"
@@ -714,24 +730,23 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
   }
 
   return (
-    <div className={`chat-panel${minimized ? " chat-panel-minimized" : ""}`}>
+    <div ref={panelRef} className="chat-panel">
       <div className="chat-panel-header">
         <span>Provisioning Assistant</span>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button className="chat-clear-btn" onClick={clearChat} title="Clear chat history">Clear</button>
           <button
             className="chat-toggle-btn"
-            onClick={() => setMinimized((value) => !value)}
-            title={minimized ? "Restore" : "Minimize"}
-            aria-label={minimized ? "Restore chat window" : "Minimize chat window"}
+            onClick={() => setOpen(false)}
+            title="Minimize to bubble"
+            aria-label="Minimize chat to bubble"
           >
-            {minimized ? "▢" : "−"}
+            −
           </button>
-          <button className="chat-clear-btn" onClick={clearChat} title="Clear chat history">Clear</button>
-          <button className="close-btn" onClick={() => setOpen(false)}>×</button>
         </div>
       </div>
 
-      {!minimized && (
+      {(
         <>
           <div className="chat-panel-body" ref={scrollRef}>
             {messages.map((m, i) => (
