@@ -225,6 +225,73 @@ export async function startVm({ node = process.env.PROXMOX_NODE, vmid }) {
   return pveRequest("post", `/nodes/${node}/qemu/${vmid}/status/start`);
 }
 
+// --- Snapshots (VM + container) ---------------------------------------------
+// The qemu/lxc guest base path — snapshot endpoints are identical under each.
+function guestBase(type, node, vmid) {
+  return `/nodes/${node}/${type === "container" ? "lxc" : "qemu"}/${vmid}`;
+}
+
+// List a guest's snapshots. Proxmox includes a synthetic "current" entry for
+// the live state — drop it so callers only see real, restorable snapshots.
+export async function listSnapshots({ node = process.env.PROXMOX_NODE, vmid, type = "vm" }) {
+  const list = await pveRequest("get", `${guestBase(type, node, vmid)}/snapshot`);
+  return (list || []).filter((s) => s.name !== "current");
+}
+
+// Create a snapshot. vmstate (include RAM) is qemu-only and only meaningful
+// while the VM is running. Awaits the Proxmox task so success/failure is real.
+export async function createSnapshot({ node = process.env.PROXMOX_NODE, vmid, type = "vm", snapname, description, vmstate }) {
+  const body = { snapname };
+  if (description) body.description = description;
+  if (vmstate && type !== "container") body.vmstate = 1;
+  const upid = await pveRequest("post", `${guestBase(type, node, vmid)}/snapshot`, body);
+  await waitForTask({ node, upid, attempts: 150 });
+  return upid;
+}
+
+export async function deleteSnapshot({ node = process.env.PROXMOX_NODE, vmid, type = "vm", snapname }) {
+  const upid = await pveRequest("delete", `${guestBase(type, node, vmid)}/snapshot/${encodeURIComponent(snapname)}`);
+  await waitForTask({ node, upid, attempts: 150 });
+  return upid;
+}
+
+// Roll the guest back to a snapshot. Can take a while (esp. with RAM state), so
+// allow a generous task timeout.
+export async function rollbackSnapshot({ node = process.env.PROXMOX_NODE, vmid, type = "vm", snapname }) {
+  const upid = await pveRequest("post", `${guestBase(type, node, vmid)}/snapshot/${encodeURIComponent(snapname)}/rollback`);
+  await waitForTask({ node, upid, attempts: 300 });
+  return upid;
+}
+
+// --- Backups (vzdump one-off + scheduled cluster jobs) ----------------------
+// Storages on the node that can hold backups (for the storage picker).
+export async function listBackupStorages({ node = process.env.PROXMOX_NODE } = {}) {
+  const list = await pveRequest("get", `/nodes/${node}/storage`, null, { content: "backup" });
+  return (list || []).map((s) => ({ storage: s.storage, type: s.type }));
+}
+
+export async function listBackupJobs() {
+  return (await pveRequest("get", "/cluster/backup")) || [];
+}
+
+export async function createBackupJob(cfg) {
+  return pveRequest("post", "/cluster/backup", cfg);
+}
+
+export async function updateBackupJob(id, cfg) {
+  return pveRequest("put", `/cluster/backup/${encodeURIComponent(id)}`, cfg);
+}
+
+export async function deleteBackupJob(id) {
+  return pveRequest("delete", `/cluster/backup/${encodeURIComponent(id)}`);
+}
+
+// Kick off an immediate backup of a single guest. Long-running — returns the
+// task UPID without awaiting it.
+export async function runBackup({ node = process.env.PROXMOX_NODE, vmid, storage, mode = "snapshot" }) {
+  return pveRequest("post", `/nodes/${node}/vzdump`, { vmid, storage, mode, compress: "zstd" });
+}
+
 export async function getVmStatus({ node = process.env.PROXMOX_NODE, vmid }) {
   return pveRequest("get", `/nodes/${node}/qemu/${vmid}/status/current`);
 }
@@ -297,6 +364,12 @@ export async function getGuestAgentIp({ node = process.env.PROXMOX_NODE, vmid })
 // groups and environment so the Resources view can filter by them.
 export async function setVmTags({ node = process.env.PROXMOX_NODE, vmid, tags = [] }) {
   await pveRequest("put", `/nodes/${node}/qemu/${vmid}/config`, { tags: tags.join(";") });
+}
+
+// Set tags on a VM or container (array joined with ';').
+export async function setTags({ node = process.env.PROXMOX_NODE, vmid, type = "vm", tags = [] }) {
+  const base = type === "container" ? "lxc" : "qemu";
+  await pveRequest("put", `/nodes/${node}/${base}/${vmid}/config`, { tags: tags.join(";") });
 }
 
 // Read a resource's raw tag string (works for VM or container).
@@ -457,6 +530,13 @@ export async function getNodeStatus({ node = process.env.PROXMOX_NODE }) {
 
 export async function getClusterResources() {
   return pveRequest("get", "/cluster/resources");
+}
+
+// List storages on the node with their capacity/usage (total, used, avail in
+// bytes) and the content types they hold. Used to size the storage pool when
+// estimating the capacity impact of a provisioning request.
+export async function listStorage({ node = process.env.PROXMOX_NODE } = {}) {
+  return pveRequest("get", `/nodes/${node}/storage`);
 }
 
 // List network interfaces on the node (bridges, VLANs, bonds, etc.). Used by

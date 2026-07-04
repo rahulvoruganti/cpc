@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getK8sContext, getK8sNamespaces, createK8sNamespace, deleteK8sNamespace,
   getK8sPods, getK8sDeployments, createK8sDeployment, deleteK8sDeployment,
@@ -9,6 +9,80 @@ function phaseClass(phase) {
   if (p === "running" || p === "active" || p === "succeeded") return "badge-running";
   if (p === "failed" || p === "unknown") return "badge-stopped";
   return "badge-neutral";
+}
+
+function Icon({ name }) {
+  const paths = {
+    box: <><path d="M21 8l-9-5-9 5v8l9 5 9-5V8z" /><path d="M3 8l9 5 9-5M12 13v8" /></>,
+    trash: <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13" />,
+    caret: <path d="M6 9l6 6 6-6" />,
+  };
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor"
+      strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{paths[name]}</svg>
+  );
+}
+
+// Row actions: a "Deploy containers" icon button, plus a split delete button
+// whose caret opens a menu with a Force-terminate toggle.
+function NamespaceActions({ ns, onOpen, onDelete }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [force, setForce] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onDoc = (e) => { if (ref.current && !ref.current.contains(e.target)) setMenuOpen(false); };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
+
+  return (
+    <div className="ch-actions" ref={ref}>
+      <button className="ch-icon-btn" title="Deploy containers" onClick={() => onOpen(ns)}>
+        <Icon name="box" /><span>Deploy</span>
+      </button>
+
+      <div className="ch-split">
+        <button
+          className={`ch-icon-btn danger ${force ? "force" : ""}`}
+          title={force ? "Force terminate namespace" : "Delete namespace"}
+          aria-label={force ? "Force terminate namespace" : "Delete namespace"}
+          onClick={() => onDelete(ns.name, force)}
+        >
+          <Icon name="trash" />
+        </button>
+        <button
+          className={`ch-caret-btn ${menuOpen ? "open" : ""}`}
+          aria-label="More delete options"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((v) => !v)}
+        >
+          <Icon name="caret" />
+        </button>
+
+        {menuOpen && (
+          <div className="ch-menu">
+            <div className="ch-menu-toggle">
+              <span>
+                <span className="ch-menu-toggle-title">Force terminate</span>
+                <span className="ch-menu-toggle-sub">Clears finalizers to remove a stuck namespace</span>
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={force}
+                className={`switch ${force ? "on" : ""}`}
+                onClick={() => setForce((v) => !v)}
+              >
+                <span className="switch-knob" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ---- Create namespace modal ----
@@ -260,9 +334,12 @@ export default function ContainerHosting({ embedded = false }) {
     loadNamespaces();
   }, []);
 
-  const remove = async (name) => {
-    if (!confirm(`Delete namespace "${name}"? This removes everything inside it.`)) return;
-    try { await deleteK8sNamespace(name); loadNamespaces(); }
+  const remove = async (name, force = false) => {
+    const msg = force
+      ? `Force terminate namespace "${name}"? This clears finalizers and removes it even if it's stuck — cleanup guarantees are dropped.`
+      : `Delete namespace "${name}"? This removes everything inside it.`;
+    if (!confirm(msg)) return;
+    try { await deleteK8sNamespace(name, force); loadNamespaces(); }
     catch (e) { alert(e.response?.data?.error || e.message); }
   };
 
@@ -304,10 +381,7 @@ export default function ContainerHosting({ embedded = false }) {
                   <td className="mono" style={{ fontSize: 12 }}>{ns.owner}</td>
                   <td><span className={`badge ${phaseClass(ns.status)}`}>{ns.status}</span></td>
                   <td>
-                    <div className="actions-cell">
-                      <button className="btn btn-ghost btn-sm" onClick={() => setSelected(ns)}>Open</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => remove(ns.name)}>Delete</button>
-                    </div>
+                    <NamespaceActions ns={ns} onOpen={setSelected} onDelete={remove} />
                   </td>
                 </tr>
               ))}

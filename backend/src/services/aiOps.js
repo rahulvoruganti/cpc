@@ -72,6 +72,19 @@ export function buildInstallPlan({ packageManager, packages = [], username, pass
   return steps;
 }
 
+// Command to set the guest OS hostname (and keep /etc/hosts consistent), run
+// over SSH because cloud-init doesn't reliably apply it on every template.
+export function hostnameSetupCommand({ hostname }) {
+  if (!hostname) return null;
+  const h = shq(hostname);
+  return [
+    `hostnamectl set-hostname ${h} 2>/dev/null || (echo ${h} > /etc/hostname && hostname ${h})`,
+    // Point 127.0.1.1 at the new name so `sudo`/tooling resolve it; replace any
+    // prior 127.0.1.1 line, otherwise append one.
+    `if grep -q '^127.0.1.1' /etc/hosts 2>/dev/null; then sed -i "s/^127.0.1.1.*/127.0.1.1 ${hostname}/" /etc/hosts; else echo "127.0.1.1 ${hostname}" >> /etc/hosts; fi`,
+  ].join("; ");
+}
+
 // Commands to create the requested user account (+ optional passwordless sudo).
 export function userSetupCommands({ username, password, sudo }) {
   if (!username) return [];

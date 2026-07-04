@@ -135,3 +135,56 @@ export function IconBox(props) {
     </Svg>
   );
 }
+
+// Camera — Take snapshot.
+export function IconCamera(props) {
+  return (
+    <Svg {...props}>
+      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+      <circle cx="12" cy="13" r="3" />
+    </Svg>
+  );
+}
+
+// Counter-clockwise clock — Restore from snapshot.
+export function IconRestore(props) {
+  return (
+    <Svg {...props}>
+      <path d="M3 12a9 9 0 1 0 9-9 9 9 0 0 0-6.74 3.06L3 8" />
+      <path d="M3 3v5h5" />
+      <path d="M12 7v5l3 2" />
+    </Svg>
+  );
+}
+
+// Archive box — Configure backups.
+export function IconArchive(props) {
+  return (
+    <Svg {...props}>
+      <rect width="20" height="5" x="2" y="3" rx="1" />
+      <path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
+      <path d="M10 12h4" />
+    </Svg>
+  );
+}
+
+// Three-dot / menu grid — the "Actions" dropdown trigger.
+export function IconActions(props) {
+  return (
+    <Svg {...props}>
+      <circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
+// Tag — the "Info / tags" dropdown trigger.
+export function IconTag(props) {
+  return (
+    <Svg {...props}>
+      <path d="M12.59 2.59A2 2 0 0 0 11.17 2H4a2 2 0 0 0-2 2v7.17a2 2 0 0 0 .59 1.42l8.82 8.82a2 2 0 0 0 2.82 0l7.18-7.18a2 2 0 0 0 0-2.82z" />
+      <circle cx="7" cy="7" r="1.4" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}

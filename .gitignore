@@ -4,3 +4,9 @@ dist
 *.log
 logs/
 *.pid
+
+# Runtime state — must never ship with the code so a fresh clone/deploy starts
+# unconfigured. The app recreates an empty data dir (and seeds a default admin)
+# on first run.
+backend/data/
+data/

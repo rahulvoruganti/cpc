@@ -108,20 +108,24 @@ export function updateJob(id, patch) {
 
   // On the transition into "failed", raise a ServiceNow incident (mocked) once
   // and attach it to the job so the UI can notify the user with its number.
+  // Returns null when ServiceNow incidents are disabled in Settings.
   if (patch.status === "failed" && prevStatus !== "failed" && !job.incident) {
     const host = job.payload?.hostname || job.payload?.hostnamePrefix || `job ${job.id}`;
-    job.incident = createIncident({
+    const incident = createIncident({
       shortDescription: `CPC provisioning failed: ${host}`,
       description: job.error || job.message || "Provisioning failed",
       callerId: job.payload?.requestedBy || "cpc-portal",
       jobId: job.id,
     });
-    if (!Array.isArray(job.logs)) job.logs = [];
-    job.logs.push({
-      ts: new Date().toISOString(),
-      status: "failed",
-      message: `ServiceNow incident ${job.incident.number} raised for this failure.`,
-    });
+    if (incident) {
+      job.incident = incident;
+      if (!Array.isArray(job.logs)) job.logs = [];
+      job.logs.push({
+        ts: new Date().toISOString(),
+        status: "failed",
+        message: `ServiceNow incident ${incident.number} raised for this failure.`,
+      });
+    }
   }
 
   // Record ownership for any newly-known resources so users can see what
@@ -131,7 +135,11 @@ export function updateJob(id, patch) {
     for (const r of job.resources) {
       if (r.vmid) {
         setOwner(r.vmid, { username: owner, hostname: r.hostname });
-        setDefaultExpiry(r.vmid, owner); // no-op if already set
+        // Honour the lifetime the requester chose on the provisioning form.
+        // "Permanent" resources get no expiry record — they're never swept.
+        if (!job.payload?.permanent) {
+          setDefaultExpiry(r.vmid, { setBy: owner, ttlDays: job.payload?.ttlDays, type: r.type }); // no-op if already set
+        }
       }
     }
   }

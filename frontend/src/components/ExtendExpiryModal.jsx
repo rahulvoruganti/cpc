@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { extendResource } from "../api/client.js";
 
-// Extend a resource's expiry by a number of days from now (admin only).
-// Mirrors EditResourceModal's small floating-form pattern.
+// Renew / extend a resource's expiry by a number of days from now. Available to
+// the resource owner and to admins. Mirrors EditResourceModal's floating form.
 export default function ExtendExpiryModal({ resource, onClose, onSaved }) {
   const [days, setDays] = useState(30);
   const [busy, setBusy] = useState(false);

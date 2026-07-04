@@ -4,6 +4,8 @@ import { ProtectedRoute } from "./components/ProtectedRoute.jsx";
 import ChatWidget from "./components/ChatWidget.jsx";
 import LogPanel from "./components/LogPanel.jsx";
 import FailureNotifier from "./components/FailureNotifier.jsx";
+import ExpiryNotifier from "./components/ExpiryNotifier.jsx";
+import { DialogProvider } from "./components/DialogProvider.jsx";
 
 import Login from "./pages/Login.jsx";
 import EntraCallback from "./pages/EntraCallback.jsx";
@@ -24,6 +26,7 @@ function GlobalOverlays() {
       <ChatWidget />
       <LogPanel />
       <FailureNotifier />
+      <ExpiryNotifier />
     </>
   );
 }
@@ -31,6 +34,7 @@ function GlobalOverlays() {
 export default function App() {
   return (
     <AuthProvider>
+      <DialogProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
@@ -51,6 +55,7 @@ export default function App() {
         </Routes>
         <GlobalOverlays />
       </BrowserRouter>
+      </DialogProvider>
     </AuthProvider>
   );
 }

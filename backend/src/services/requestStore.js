@@ -4,6 +4,15 @@ import { fileURLToPath } from "url";
 import { nanoid } from "nanoid";
 import { createJob, getJob } from "./jobStore.js";
 import { runVmJob, runContainerJob, runStackJob, runInternalJob } from "./provisioner.js";
+import * as pve from "./proxmoxService.js";
+import { notifyAdmins, notifyUser } from "./notificationStore.js";
+
+// Short label for a request, used in notification titles.
+function targetOf(request) {
+  const p = request?.payload || {};
+  return p.hostname || p.hostnamePrefix || p.templateId || p.stackId
+    || (p.vmid ? `VMID ${p.vmid}` : null) || request?.id;
+}
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_DIR = path.join(__dirname, "..", "..", "data");
@@ -44,8 +53,10 @@ const POLICY = {
   diskGB: Number(process.env.APPROVAL_DISK_GB_THRESHOLD || 50),
 };
 
-// Deployments are auto-approved by default — no admin gate. Set
-// AUTO_APPROVE_DEPLOYMENTS=false to re-enable the size-based approval policy.
+// Approval gate. When "Auto-approve all deployments" is on (the boolNegated
+// setting is anything but the string "false"), every request skips the gate.
+// When it's off, a request that exceeds any threshold (CPU, RAM or disk) is
+// paused for admin approval; within-limits requests auto-provision.
 const AUTO_APPROVE = process.env.AUTO_APPROVE_DEPLOYMENTS !== "false";
 
 function requiresApproval(payload = {}) {
@@ -54,6 +65,12 @@ function requiresApproval(payload = {}) {
   const memoryGB = Number(payload.memoryGB || 0);
   const diskGB = Number(payload.diskGB || 0);
   return cpu > POLICY.cpu || memoryGB > POLICY.memoryGB || diskGB > POLICY.diskGB;
+}
+
+// Public helper: does a resize to these target totals need admin approval?
+// Reuses the same size policy as new-VM provisioning (evaluated on the target).
+export function resizeNeedsApproval(target = {}) {
+  return requiresApproval(target);
 }
 
 function buildRequest({ kind, payload, requestedBy, source = "portal" }) {
@@ -136,6 +153,16 @@ export function submitProvisionRequest({ kind, payload, requestedBy, source = "p
   let job = null;
   if (!request.requiresApproval) {
     job = runProvisioningForRequest(request);
+  } else {
+    // Over the size policy — tell the admins there's something to review.
+    const verb = kind === "resize" ? "resize" : "provision";
+    notifyAdmins({
+      type: "approval",
+      title: `Approval needed — ${targetOf(request)}`,
+      message: `${requestedBy} requested to ${verb} ${targetOf(request)}. Review and approve or reject.`,
+      link: `/requests?review=${request.id}`,
+      meta: { requestId: request.id, kind },
+    });
   }
   return { request: syncRequestStatus(request), job };
 }
@@ -151,10 +178,12 @@ export function getProvisionRequest(id) {
   return syncRequestStatus(req);
 }
 
-export function approveProvisionRequest({ id, approver }) {
+export async function approveProvisionRequest({ id, approver }) {
   const request = requests.get(id);
   if (!request) return null;
-  if (!request.requiresApproval || request.status !== "pending_approval") return syncRequestStatus(request);
+  if (!request.requiresApproval || request.status !== "pending_approval") {
+    return { request: syncRequestStatus(request), job: null };
+  }
 
   request.status = "approved";
   request.approvedBy = approver;
@@ -165,8 +194,81 @@ export function approveProvisionRequest({ id, approver }) {
   request.rejectionReason = null;
   persist();
 
+  // Resize requests don't spawn a provisioning job — apply the new specs to the
+  // live resource, then wait for the owner to trigger the reboot.
+  if (request.kind === "resize") {
+    await applyResizeRequest(request);
+    return { request: syncRequestStatus(request), job: null };
+  }
+
   const job = runProvisioningForRequest(request);
+  notifyUser(request.requestedBy, {
+    type: "approved",
+    title: `Request approved — ${targetOf(request)}`,
+    message: `Your ${request.kind} request was approved and is now provisioning.`,
+    link: "/deployments",
+    meta: { requestId: request.id, jobId: job?.id || null },
+  });
   return { request: syncRequestStatus(request), job };
+}
+
+// Apply an approved resize to the live resource, then move it to
+// "awaiting_reboot" and notify the owner to trigger the reboot.
+async function applyResizeRequest(request) {
+  const p = request.payload || {};
+  try {
+    const edit = p.type === "container" ? pve.editContainer : pve.editVm;
+    const specs = { vmid: p.vmid };
+    if (p.cpu != null) specs.cores = Number(p.cpu);
+    if (p.memoryGB != null) specs.memory = Number(p.memoryGB) * 1024;
+    // Disk can only grow — only pass it when the target exceeds the current size.
+    if (p.diskGB != null && (!p.current?.diskGB || Number(p.diskGB) > Number(p.current.diskGB))) {
+      specs.diskGB = Number(p.diskGB);
+    }
+    await edit(specs);
+
+    request.status = "awaiting_reboot";
+    request.updatedAt = new Date().toISOString();
+    persist();
+
+    notifyUser(request.requestedBy, {
+      type: "resize_approved",
+      title: `Resize approved — ${targetOf(request)}`,
+      message: `Your resize was applied. Reboot ${targetOf(request)} now to bring the new resources online.`,
+      link: `/resources?reboot=${p.vmid}&request=${request.id}`,
+      meta: { requestId: request.id, vmid: p.vmid },
+    });
+  } catch (err) {
+    request.status = "failed";
+    request.error = err.message;
+    request.updatedAt = new Date().toISOString();
+    persist();
+    notifyUser(request.requestedBy, {
+      type: "resize_failed",
+      title: `Resize failed — ${targetOf(request)}`,
+      message: err.message,
+      link: "/requests",
+      meta: { requestId: request.id },
+    });
+    throw err;
+  }
+}
+
+// Owner (or admin) confirms the reboot for an approved-and-applied resize.
+export async function confirmResizeReboot({ id, actor }) {
+  const request = requests.get(id);
+  if (!request || request.kind !== "resize") return null;
+  if (request.status !== "awaiting_reboot") return { request: syncRequestStatus(request) };
+
+  const p = request.payload || {};
+  const reboot = p.type === "container" ? pve.rebootContainer : pve.rebootVm;
+  await reboot({ vmid: p.vmid });
+
+  request.status = "completed";
+  request.rebootedBy = actor;
+  request.updatedAt = new Date().toISOString();
+  persist();
+  return { request: syncRequestStatus(request) };
 }
 
 export function rejectProvisionRequest({ id, reviewer, reason = "Rejected by admin" }) {
@@ -180,5 +282,13 @@ export function rejectProvisionRequest({ id, reviewer, reason = "Rejected by adm
   request.rejectionReason = reason;
   request.updatedAt = new Date().toISOString();
   persist();
+
+  notifyUser(request.requestedBy, {
+    type: "rejected",
+    title: `Request rejected — ${targetOf(request)}`,
+    message: reason,
+    link: "/requests",
+    meta: { requestId: request.id },
+  });
   return syncRequestStatus(request);
 }

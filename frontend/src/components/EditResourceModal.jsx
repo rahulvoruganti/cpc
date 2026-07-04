@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { editResource } from "../api/client.js";
+import { editResource, resizeResource, resourceAction } from "../api/client.js";
+import { useDialog } from "./DialogProvider.jsx";
 
 // Edit CPU / memory / disk for an existing VM or container.
-// cpu & memory hot-apply where the guest supports it; disk can only grow.
+// Small changes (within the size policy) apply after a reboot the user confirms;
+// larger changes are routed to admin approval, then rebooted on the user's OK.
 export default function EditResourceModal({ resource, onClose, onSaved }) {
   const isVm = resource.type === "vm" || resource.type === "qemu";
   const kind = isVm ? "vm" : "container";
+  const { confirm, alert } = useDialog();
 
   const [cpu, setCpu] = useState(resource.cpu || 1);
   const [memoryGB, setMemoryGB] = useState(resource.memGB || 1);
@@ -14,33 +17,65 @@ export default function EditResourceModal({ resource, onClose, onSaved }) {
   const [error, setError] = useState("");
 
   const minDisk = resource.maxdiskGB || 1;
+  const label = resource.name || `VMID ${resource.vmid}`;
 
   const submit = async (e) => {
     e.preventDefault();
     setError("");
 
-    const specs = {};
-    if (Number(cpu) !== resource.cpu) specs.cpu = Number(cpu);
-    if (Number(memoryGB) !== resource.memGB) specs.memoryGB = Number(memoryGB);
-    if (Number(diskGB) !== resource.maxdiskGB) specs.diskGB = Number(diskGB);
+    // Only the fields that actually changed are applied (disk can only grow).
+    const changed = {};
+    if (Number(cpu) !== resource.cpu) changed.cpu = Number(cpu);
+    if (Number(memoryGB) !== resource.memGB) changed.memoryGB = Number(memoryGB);
+    if (Number(diskGB) !== resource.maxdiskGB) changed.diskGB = Number(diskGB);
 
     if (Number(diskGB) < minDisk) {
       setError(`Disk can only grow — minimum ${minDisk} GB.`);
       return;
     }
-    if (Object.keys(specs).length === 0) {
+    if (Object.keys(changed).length === 0) {
       setError("Nothing changed.");
       return;
     }
 
     setBusy(true);
     try {
-      await editResource(kind, resource.vmid, specs);
+      // Ask the backend to decide: within policy → reboot; over policy → approval.
+      const decision = await resizeResource(kind, resource.vmid, {
+        cpu: Number(cpu),
+        memoryGB: Number(memoryGB),
+        diskGB: Number(diskGB),
+        current: { cpu: resource.cpu, memoryGB: resource.memGB, diskGB: resource.maxdiskGB },
+        hostname: resource.name,
+      });
+
+      if (decision.approvalRequired) {
+        // Large resize — an approval request was created and admins notified.
+        onSaved?.();
+        onClose();
+        alert({
+          title: "Approval required",
+          message: `This resize exceeds the size policy, so it needs admin approval. Request ${decision.requestId} has been sent — you'll be notified here once it's reviewed, then prompted to reboot.`,
+        });
+        return;
+      }
+
+      // Small resize — confirm the reboot, then apply and reboot.
+      const ok = await confirm({
+        title: "Reboot required",
+        message: `Applying these changes will reboot ${label}. It will be briefly unavailable. Proceed?`,
+        confirmLabel: "Resize & reboot",
+        tone: "danger",
+      });
+      if (!ok) { setBusy(false); return; }
+
+      await editResource(kind, resource.vmid, changed);
+      await resourceAction(kind, resource.vmid, "reboot");
       onSaved?.();
       onClose();
+      alert({ title: "Resize started", message: `${label} is being resized and rebooted. It will be back shortly.` });
     } catch (err) {
       setError(err.response?.data?.error || err.message);
-    } finally {
       setBusy(false);
     }
   };
