@@ -1,0 +1,43 @@
+{
+  "templates": {
+    "100": {
+      "osName": "Alpine",
+      "cloudInitFile": "alpine-temp.yaml",
+      "cloudInitSource": "snippet",
+      "credUser": "root",
+      "credPassword": "",
+      "connectivity": "ssh",
+      "port": 22,
+      "packageManager": "apt",
+      "updatedAt": "2026-07-04T05:18:12.125Z"
+    },
+    "200": {
+      "osName": "RHEL9",
+      "cloudInitFile": "rhel-temp.yaml",
+      "cloudInitSource": "snippet",
+      "credUser": "root",
+      "credPassword": "Colruyt@123",
+      "connectivity": "ssh",
+      "port": 22,
+      "packageManager": "yum",
+      "updatedAt": "2026-07-03T15:53:17.854Z"
+    }
+  },
+  "networks": {
+    "vmbr30": {
+      "type": "bridge",
+      "label": "Test",
+      "updatedAt": "2026-07-03T15:53:30.207Z"
+    },
+    "vmbr190": {
+      "type": "bridge",
+      "label": "Client",
+      "updatedAt": "2026-07-03T15:53:36.957Z"
+    },
+    "vmbr0": {
+      "type": "bridge",
+      "label": "Prod",
+      "updatedAt": "2026-07-03T15:53:44.400Z"
+    }
+  }
+}

@@ -88,9 +88,14 @@ export async function getNextVmid() {
   return pveRequest("get", "/cluster/nextid");
 }
 
-export async function listTemplates(node = process.env.PROXMOX_NODE) {
+// Accepts either listTemplates(), listTemplates("node") or the object style
+// listTemplates({ node }) used elsewhere in this module — callers pass {} so a
+// positional node arg would otherwise become "[object Object]".
+export async function listTemplates(arg) {
+  const node = (arg && typeof arg === "object" ? arg.node : arg) || process.env.PROXMOX_NODE;
   const vms = await pveRequest("get", `/nodes/${node}/qemu`);
-  return vms.filter((vm) => vm.template === 1);
+  // Proxmox reports the template flag as 1 (number) — tolerate true/"1" too.
+  return vms.filter((vm) => vm.template === 1 || vm.template === true || vm.template === "1");
 }
 
 export async function cloneVm({

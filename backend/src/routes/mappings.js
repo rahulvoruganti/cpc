@@ -33,9 +33,9 @@ function isNetworkCandidate(iface) {
 router.get("/mappings", async (req, res) => {
   try {
     const [templates, networks, snippets] = await Promise.all([
-      pve.listTemplates({}).catch(() => []),
-      pve.listNetworks({}).catch(() => []),
-      pve.listSnippets({}).catch(() => []),
+      pve.listTemplates({}).catch((e) => { console.error("[mappings] template detection failed:", e.message); return []; }),
+      pve.listNetworks({}).catch((e) => { console.error("[mappings] network detection failed:", e.message); return []; }),
+      pve.listSnippets({}).catch((e) => { console.error("[mappings] snippet detection failed:", e.message); return []; }),
     ]);
 
     const tMap = getTemplateMappings();
