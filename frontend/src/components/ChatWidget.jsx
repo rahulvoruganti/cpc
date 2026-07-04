@@ -644,6 +644,7 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
           role: "assistant",
           text: res.reply,
           proposal: res.proposal ? ensureProposalShape(res.proposal, catalogs) : null,
+          resourceList: res.resourceList || null,
         },
       ]);
 
@@ -764,6 +765,22 @@ export default function ChatWidget({ onJobCreated = () => {} }) {
                     }}
                     onProvision={(proposal) => provisionFromProposal(proposal, i)}
                   />
+                )}
+                {m.resourceList?.length > 0 && (
+                  <div className="chat-resource-list">
+                    {m.resourceList.map((r) => {
+                      const running = (r.status || "").toLowerCase() === "running";
+                      return (
+                        <div key={r.vmid} className="chat-resource-row">
+                          <span className={`chat-resource-dot${running ? " is-running" : ""}`} aria-hidden="true" />
+                          <span className="chat-resource-name" title={r.name || ""}>{r.name || "(no name)"}</span>
+                          <span className={`chat-resource-type chat-resource-type-${r.type}`}>{r.type === "container" ? "CT" : "VM"}</span>
+                          <span className="chat-resource-id">#{r.vmid}</span>
+                          <span className={`chat-resource-status${running ? " is-running" : ""}`}>{r.status || "unknown"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 )}
                 {m.resources?.length > 0 && (
                   <div className="chat-connect-row">

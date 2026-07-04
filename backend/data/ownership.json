@@ -39,12 +39,6 @@
       "hostname": "test",
       "createdAt": "2026-07-04T06:53:09.335Z"
     },
-    "109": {
-      "username": "admin",
-      "hostname": "rhel-vm-01",
-      "createdAt": "2026-07-03T07:07:37.028Z",
-      "ip": "10.161.230.109"
-    },
     "110": {
       "username": "admin",
       "hostname": "test",
@@ -88,7 +82,8 @@
     "118": {
       "username": "admin",
       "hostname": "docker01",
-      "createdAt": "2026-07-03T17:19:54.612Z"
+      "createdAt": "2026-07-03T17:19:54.612Z",
+      "ip": "10.161.230.55"
     }
   }
 }

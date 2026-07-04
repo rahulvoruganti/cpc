@@ -3354,6 +3354,21 @@
       "detail": {
         "method": "local"
       }
+    },
+    {
+      "id": "qfALXUq8oK",
+      "timestamp": "2026-07-04T09:18:58.686Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "vm.delete",
+      "target": "testinggggggggg (VMID 109)",
+      "status": "success",
+      "detail": {
+        "via": "chat"
+      }
     }
   ]
 }

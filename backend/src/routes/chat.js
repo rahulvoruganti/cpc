@@ -350,12 +350,6 @@ function resolveResourceTarget(resources, args = {}) {
   return candidates;
 }
 
-function formatResourceList(resources) {
-  return resources
-    .map((r) => `- ${r.name || "(no-name)"} [${r.type}] VMID ${r.vmid} (${r.status || "unknown"})`)
-    .join("\n");
-}
-
 router.post("/chat", async (req, res) => {
   const { message, history } = req.body;
   if (!message || typeof message !== "string") {
@@ -439,7 +433,8 @@ router.post("/chat", async (req, res) => {
           });
         }
         return res.json({
-          reply: `Here are your assigned resources:\n${formatResourceList(filtered)}`,
+          reply: "Here are your assigned resources:",
+          resourceList: filtered,
           job: null,
         });
       }
@@ -455,7 +450,8 @@ router.post("/chat", async (req, res) => {
 
         if (candidates.length > 1) {
           return res.json({
-            reply: `I found multiple matching resources. Please specify VMID.\n${formatResourceList(candidates.slice(0, 10))}`,
+            reply: "I found multiple matching resources. Please specify a VMID:",
+            resourceList: candidates.slice(0, 10),
             job: null,
           });
         }
@@ -481,7 +477,8 @@ router.post("/chat", async (req, res) => {
 
       if (candidates.length > 1) {
         return res.json({
-          reply: `I found multiple matching resources. Please specify VMID.\n${formatResourceList(candidates.slice(0, 10))}`,
+          reply: "I found multiple matching resources. Please specify a VMID:",
+          resourceList: candidates.slice(0, 10),
           job: null,
         });
       }
