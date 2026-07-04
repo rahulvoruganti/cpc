@@ -45,6 +45,11 @@ const PACKAGE_OPTIONS = [
   "yarn",
 ];
 
+// Always installed on every server (the Colruyt security baseline). Shown
+// read-only in the form; the backend installs these in the "Security baseline"
+// step. Keep in sync with backend deploymentSteps.DEFAULT_AGENTS.
+const DEFAULT_AGENTS = ["Microsoft Defender for Endpoint", "OMI Client", "Guardicore Agent"];
+
 function SearchablePackageDropdown({
   label,
   options,
@@ -264,12 +269,21 @@ function ProvisionForm({ selected, environments = [], onSubmit, busy, onClose })
 
           {!isInternal && (
             <>
+              <div className="field provision-packages-field">
+                <label>Default applications <span className="muted">— always installed (security baseline)</span></label>
+                <div className="provision-packages-list">
+                  {DEFAULT_AGENTS.map((a) => (
+                    <span key={a} className="provision-inline-kind provision-inline-kind-fixed">🛡 {a}</span>
+                  ))}
+                </div>
+              </div>
+
               <SearchablePackageDropdown
                 label="Required packages"
                 options={PACKAGE_OPTIONS}
                 selected={requiredPackages}
                 onToggle={toggleRequiredPackage}
-                helperText="Search and select the packages to install and enable on the VM."
+                helperText="Search and select any extra software to install and enable on the VM."
                 defaultOpen
               />
 

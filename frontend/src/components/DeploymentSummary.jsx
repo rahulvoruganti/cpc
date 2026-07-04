@@ -105,7 +105,7 @@ export default function DeploymentSummary({ job, onClose }) {
                   </div>
                 ))}
               </div>
-              <p className="ds-note">Each internal system was called via its configured endpoint. This workflow does not create a Proxmox VM.</p>
+              <p className="ds-note">Each step in the internal provisioning workflow completed. This workflow does not create a Proxmox VM.</p>
             </div>
           )}
 

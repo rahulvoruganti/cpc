@@ -16,6 +16,16 @@ function fmtTime(ts) {
   try { return new Date(ts).toLocaleTimeString([], { hour12: false }); } catch { return ""; }
 }
 
+// Human duration: "45s", "2m 10s", "3m".
+function fmtDur(sec) {
+  if (sec == null || Number.isNaN(sec)) return "";
+  const s = Math.max(0, Math.round(sec));
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return rem ? `${m}m ${rem}s` : `${m}m`;
+}
+
 function catDotClass(category) {
   if (category === "successful") return "log-dot-ok";
   if (category === "failed") return "log-dot-danger";
@@ -37,26 +47,51 @@ function jobTitle(job) {
 }
 
 function StepList({ job }) {
-  // Workflow jobs carry a structured, per-step tracker — render that as circles
-  // that go green as each named step finishes, instead of the raw log stream.
+  // Workflow jobs carry a structured, per-step tracker — render each step with
+  // its impactful statement, an ETA (pending/active) and time taken (done).
   if (job.steps?.length) {
+    const hasEta = job.steps.some((s) => s.etaSec != null || s.tookSec != null);
+    const totalEta = job.steps.reduce((a, s) => a + (s.etaSec || 0), 0);
+    const doneElapsed = job.steps.reduce((a, s) => a + (s.state === "done" ? (s.tookSec || 0) : 0), 0);
+
     return (
-      <ol className="wf-track">
-        {job.steps.map((s, i) => {
-          const state = job.status === "failed" && s.state === "active" ? "failed" : s.state;
-          return (
-            <li key={s.key || i} className={`wf-track-step wf-track-${state}`}>
-              <span className="wf-track-dot">
-                {state === "done" ? "✓" : state === "failed" ? "✕" : i + 1}
-              </span>
-              <span className="wf-track-body">
-                <span className="wf-track-label">{s.label}</span>
-                {s.reference && <span className="wf-track-ref mono">{s.reference}</span>}
-              </span>
-            </li>
-          );
-        })}
-      </ol>
+      <div className="wf">
+        {hasEta && totalEta > 0 && (
+          <div className="wf-eta-bar">
+            <span>Est. total <strong>~{fmtDur(totalEta)}</strong></span>
+            <span className="muted">elapsed {fmtDur(doneElapsed)}</span>
+          </div>
+        )}
+        <ol className="wf-track">
+          {job.steps.map((s, i) => {
+            const state = job.status === "failed" && s.state === "active" ? "failed" : s.state;
+            const statement =
+              state === "done" ? s.done
+              : state === "active" ? s.active
+              : state === "failed" ? (s.active || s.label)
+              : state === "skipped" ? (s.done || s.label)
+              : s.label; // pending
+            const timing =
+              state === "done" && s.tookSec != null ? `took ${fmtDur(s.tookSec)}`
+              : state === "active" && s.etaSec ? `~${fmtDur(s.etaSec)}`
+              : state === "pending" && s.etaSec ? `ETA ${fmtDur(s.etaSec)}`
+              : state === "skipped" ? "skipped"
+              : "";
+            return (
+              <li key={s.key || i} className={`wf-track-step wf-track-${state}`}>
+                <span className="wf-track-dot">
+                  {state === "done" ? "✓" : state === "failed" ? "✕" : state === "skipped" ? "–" : i + 1}
+                </span>
+                <span className="wf-track-body">
+                  <span className="wf-track-label">{statement || s.label}</span>
+                  {s.reference && <span className="wf-track-ref mono">{s.reference}</span>}
+                </span>
+                {timing && <span className="wf-track-time mono">{timing}</span>}
+              </li>
+            );
+          })}
+        </ol>
+      </div>
     );
   }
 

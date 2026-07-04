@@ -1953,7 +1953,10 @@ a { color: var(--accent); text-decoration: none; }
 }
 .wf-track-done .wf-track-dot   { background: var(--ok); border-color: var(--ok); color: #fff; }
 .wf-track-active .wf-track-dot { border-color: var(--accent); color: var(--accent); animation: log-live 1.6s ease-in-out infinite; }
-.wf-track-failed .wf-track-dot { background: var(--danger); border-color: var(--danger); color: #fff; }
+.wf-track-failed .wf-track-dot,
+.wf-track-error .wf-track-dot  { background: var(--danger); border-color: var(--danger); color: #fff; }
+.wf-track-skipped .wf-track-dot { background: var(--line-2); border-color: var(--line); color: var(--ink-3); }
+.wf-track-skipped .wf-track-label { color: var(--ink-3); }
 .wf-track-body { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; min-width: 0; }
 .wf-track-label { font-size: 13px; color: var(--ink); }
 .wf-track-pending .wf-track-label { color: var(--ink-3); }
@@ -2242,3 +2245,15 @@ a { color: var(--accent); text-decoration: none; }
   font-size: 18px; line-height: 1; padding: 0 2px; flex: 0 0 auto;
 }
 .toast-close:hover { color: var(--ink); }
+
+/* --- Deployment monitor: ETA + per-step timing --- */
+.wf-track-body { flex: 1 1 auto; }
+.wf-track-time { flex: none; align-self: center; font-size: 11px; color: var(--ink-3); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wf-track-active .wf-track-time { color: var(--accent); font-weight: 600; }
+.wf-track-done .wf-track-time { color: var(--ok); }
+.wf-eta-bar {
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 12px; color: var(--ink-2);
+  margin-top: 10px; padding: 6px 10px;
+  background: var(--line-2); border-radius: var(--radius-sm);
+}

@@ -60,7 +60,10 @@ export default function JobStatus({ jobId, onClose }) {
               return (
                 <li key={s.key || i} className={`wf-track-step wf-track-${state}`}>
                   <span className="wf-track-dot">
-                    {state === "done" ? "✓" : state === "failed" ? "✕" : i + 1}
+                    {state === "done" ? "✓"
+                      : state === "failed" || state === "error" ? "✕"
+                      : state === "skipped" ? "–"
+                      : i + 1}
                   </span>
                   <span className="wf-track-body">
                     <span className="wf-track-label">{s.label}</span>

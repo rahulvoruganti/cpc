@@ -90,6 +90,8 @@ function runProvisioningForRequest(request) {
     ...request.payload,
     requestedBy: request.requestedBy,
     requestId: request.id,
+    autoApproved: !request.requiresApproval,
+    approvedBy: request.approvedBy || null,
   });
 
   // Pass the job payload (which carries requestedBy) so the provisioner can tag

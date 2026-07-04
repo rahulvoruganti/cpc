@@ -72,6 +72,39 @@ export function buildInstallPlan({ packageManager, packages = [], username, pass
   return steps;
 }
 
+// Commands to create the requested user account (+ optional passwordless sudo).
+export function userSetupCommands({ username, password, sudo }) {
+  if (!username) return [];
+  const steps = [
+    {
+      name: `create user ${username}`,
+      cmd: `id ${shq(username)} >/dev/null 2>&1 || useradd -m -s /bin/bash ${shq(username)} 2>/dev/null || adduser -D ${shq(username)}`,
+    },
+    {
+      name: "set user password",
+      cmd: `echo ${shq(`${username}:${password}`)} | chpasswd 2>/dev/null || (echo ${shq(password)}; echo ${shq(password)}) | passwd ${shq(username)}`,
+    },
+  ];
+  if (sudo) {
+    steps.push({
+      name: "grant sudo",
+      cmd: `(usermod -aG sudo ${shq(username)} 2>/dev/null || usermod -aG wheel ${shq(username)} 2>/dev/null || true); ` +
+        `printf '%s ALL=(ALL) NOPASSWD:ALL\\n' ${shq(username)} > /etc/sudoers.d/${username} && chmod 440 /etc/sudoers.d/${username}`,
+    });
+  }
+  return steps;
+}
+
+// A single command that refreshes the index, installs, and enables packages.
+// Returns null when there's nothing to install.
+export function packageInstallCommand({ packageManager, packages = [] }) {
+  const list = packages.filter(Boolean);
+  if (!list.length) return null;
+  const pm = PM[packageManager] || PM.apt;
+  const pkgs = list.join(" ");
+  return `${pm.refresh}; ${pm.install(pkgs)}; for s in ${pkgs}; do systemctl enable --now "$s" 2>/dev/null || rc-update add "$s" default 2>/dev/null || true; done`;
+}
+
 // ---- AI troubleshooting (best-effort; deterministic fallback = give up) ----
 function errKey({ command, stderr }) {
   const sig = `${command}::${(stderr || "").slice(0, 200)}`;

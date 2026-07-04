@@ -8,11 +8,31 @@ import { ownerTags } from "./tags.js";
 import { waitForPort } from "./portProbe.js";
 import { generatePassword } from "./passwordGen.js";
 import { runSsh } from "./sshRunner.js";
-import { buildInstallPlan, aiTroubleshoot } from "./aiOps.js";
-import { INTERNAL_APIS } from "./internalProvisioningApis.js";
+import { userSetupCommands, packageInstallCommand, aiTroubleshoot } from "./aiOps.js";
+import { INTERNAL_APIS, isSystemConfigured } from "./internalProvisioningApis.js";
 import { findInternalTemplate } from "../config/internalCatalog.js";
+import { createStepTracker, DEFAULT_AGENTS } from "./deploymentSteps.js";
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Run a list of {name, cmd} over SSH as root, with a one-shot AI-assisted retry
+// on failure. Returns per-command results (best-effort — never throws).
+async function runCommands(cmds, sshOpts, { osName, packageManager } = {}) {
+  const results = [];
+  for (const c of cmds) {
+    if (!c || !c.cmd) continue;
+    let res = await runSsh({ ...sshOpts, command: c.cmd }).catch((e) => ({ code: 1, stdout: "", stderr: e.message }));
+    if (res.code !== 0) {
+      const fix = await aiTroubleshoot({ command: c.cmd, stderr: res.stderr, osName, packageManager }).catch(() => null);
+      if (fix?.fix) {
+        await runSsh({ ...sshOpts, command: fix.fix }).catch(() => {});
+        res = await runSsh({ ...sshOpts, command: c.cmd }).catch((e) => ({ code: 1, stdout: "", stderr: e.message }));
+      }
+    }
+    results.push({ name: c.name, ok: res.code === 0, stderr: res.code === 0 ? "" : (res.stderr || "").slice(0, 300) });
+  }
+  return results;
+}
 
 // Resolve a VM template id to its Proxmox VMID + mapping. Mapping-derived ids
 // look like "tpl-<vmid>"; anything else (e.g. stack member ids) falls back to
@@ -81,16 +101,17 @@ async function provisionContainer({ templateId, hostname, cpu, memoryGB, package
   return { vmid: newVmid, hostname, type: "container", templateId, ip: null, requestedPackages: packages };
 }
 
-// Full VM deployment pipeline. Each phase updates the job so the deployment
-// monitor shows step-by-step progress. Post-boot configuration always SSHes in
-// as the template's root account (from Mappings) — never the end-user account.
+// Full VM deployment pipeline, driven by a structured step tracker so the
+// deployment monitor shows each step with an impactful statement, an ETA, and
+// the time it actually took. Post-boot configuration always SSHes in as the
+// template's root account (from Mappings) — never the end-user account.
 export async function runVmJob(jobId, payload) {
   const {
     templateId, hostname, cpu, memoryGB, diskGB,
     packages = [], username, sudoAccess = false, environment,
   } = payload;
 
-  const step = (status, message) => updateJob(jobId, { status, message });
+  const tracker = createStepTracker({ templateKey: templateId, emit: (p) => updateJob(jobId, p) });
   let newVmid = null;
 
   try {
@@ -103,142 +124,136 @@ export async function runVmJob(jobId, payload) {
     const cloudInitFile = m.cloudInitFile || null;
     const packageManager = m.packageManager || "apt";
 
-    // 1) Clone the template.
-    step("provisioning", "Creating your virtual machine…");
+    // --- Request / approval steps (already settled by the time we run) ---
+    tracker.quickDone("submitted");
+    tracker.quickDone("approval", {
+      done: payload.autoApproved === false
+        ? `Approved by ${payload.approvedBy || "an administrator"}`
+        : "Standard request — auto-approved",
+    });
+    tracker.quickDone("approved");
+
+    // --- Provision the VM (clone) ---
+    tracker.start("provision_vm");
     newVmid = await pve.getNextVmid();
     await pve.cloneVm({ templateVmid: tpl.vmid, newVmid, hostname });
+    tracker.done("provision_vm", { done: `Virtual machine #${newVmid} provisioned` });
 
-    // 2) Monitor the config lock (held while Proxmox copies the disk).
-    step("provisioning", "Preparing the virtual machine…");
+    // --- Deploy the OS (disk copy finishes when the clone lock clears) ---
+    tracker.start("deploy_os");
     await pve.waitForUnlock({ vmid: newVmid, onTick: () => {} });
+    await sleep(4000);
+    tracker.done("deploy_os", { done: `${tpl.name} image deployed` });
 
-    // 3) A short settle, then resize. Disk can only grow — never below the
-    //    template's current size.
-    await sleep(6000);
+    // --- Allocate resources (CPU / RAM / disk; disk only grows) ---
+    tracker.start("allocate_resources");
     const currentDisk = await pve.getDiskSizeGB({ vmid: newVmid, disk: "scsi0" }).catch(() => null);
     const targetDisk = currentDisk ? Math.max(Number(diskGB) || 0, currentDisk) : Number(diskGB);
     const growDisk = currentDisk && targetDisk > currentDisk ? targetDisk : (currentDisk ? undefined : targetDisk);
-    step("provisioning", `Applying your selected size: ${cpu} vCPU, ${memoryGB} GB RAM, ${targetDisk} GB disk…`);
     await pve.editVm({ vmid: newVmid, cores: cpu, memory: Number(memoryGB) * 1024, diskGB: growDisk });
+    tracker.done("allocate_resources", { done: `Allocated ${cpu} vCPU · ${memoryGB} GB RAM · ${targetDisk} GB disk` });
 
-    // 4) Attach the selected environment (bridge/VLAN) on DHCP, enable the guest
-    //    agent, and link the mapping's cloud-init snippet.
-    step("provisioning", `Connecting it to the "${environment}" network…`);
+    // --- Assign IP / network (attach NIC on DHCP), cloud-init + tags ---
+    tracker.start("assign_ip");
     await pve.setVmNetwork({ vmid: newVmid, iface: environment });
     if (cloudInitFile) await pve.setCicustom({ vmid: newVmid, file: cloudInitFile });
-
-    // Tag the VM with the owner, their groups and the environment — this drives
-    // who can see it in the Resources view.
     const owner = payload.requestedBy;
     const groups = owner ? groupsForUser(owner) : [];
-    await pve.setVmTags({ vmid: newVmid, tags: ownerTags({ username: owner, groups, environment }) })
-      .catch((e) => updateJob(jobId, { message: `Note: could not set tags (${e.message})` }));
+    await pve.setVmTags({ vmid: newVmid, tags: ownerTags({ username: owner, groups, environment }) }).catch(() => {});
+    tracker.done("assign_ip", { done: `Attached to "${environment}" (address leased on boot)` });
 
     const resource = { vmid: newVmid, hostname, type: "vm", ip: null, environment, sshReady: false };
     updateJob(jobId, { resources: [resource] });
 
-    // 5) Boot.
-    step("booting", "Starting up your virtual machine…");
+    // --- Power on ---
+    tracker.start("power_on");
     await pve.startVm({ vmid: newVmid });
+    tracker.done("power_on");
 
-    // 6) Discover the DHCP-assigned IP via the guest agent.
-    step("booting", "Waiting for it to get a network address…");
+    // --- System startup: wait for DHCP + SSH ---
+    tracker.start("system_startup");
     const ip = await discoverVmIp(newVmid, { timeoutMs: 600000, intervalMs: 10000 });
     if (!ip) {
-      updateJob(jobId, {
-        status: "ready",
-        message: "Your VM started but we couldn't reach it on the network yet. It was created, but may still be finishing startup.",
-        resources: [{ ...resource, sshReady: false }],
-      });
+      tracker.stall("Your VM started but never reported a network address (is the guest agent installed?). It was created, but is unreachable.");
+      updateJob(jobId, { status: "ready", resources: [{ ...resource, sshReady: false }] });
       return;
     }
     setOwnerIp(newVmid, ip);
     resource.ip = ip;
-    updateJob(jobId, { message: "Almost there — waiting for the VM to come online…", resources: [{ ...resource }] });
-
     const online = await waitForPort({ host: ip, port: sshPort, timeoutMs: 180000, intervalMs: 5000 });
     if (!online) {
-      updateJob(jobId, {
-        status: "ready",
-        message: "Your VM is running but isn't accepting connections yet. It was created, but may still be finishing startup.",
-        resources: [{ ...resource, sshReady: false }],
-      });
+      tracker.stall(`Your VM is up at ${ip} but isn't accepting SSH yet. It was created, but is unreachable.`);
+      updateJob(jobId, { status: "ready", resources: [{ ...resource, sshReady: false }] });
       return;
     }
+    tracker.done("system_startup", { done: `System online at ${ip}` });
 
-    // 7) Configure over SSH as root: create the user, grant sudo, install the
-    //    required packages, enable services. AI assists on failures (cached).
+    const sshOpts = { host: ip, port: sshPort, username: rootUser, password: rootPass };
+    const allStepResults = [];
+
+    // --- Initial setup: first-boot init + create the user account ---
+    tracker.start("initial_setup");
     const generatedPassword = username ? generatePassword() : null;
-    const plan = buildInstallPlan({ packageManager, packages, username, password: generatedPassword, sudo: sudoAccess });
-    const stepResults = [];
+    const initCmds = [
+      { name: "wait for cloud-init", cmd: "cloud-init status --wait 2>/dev/null || true" },
+      ...userSetupCommands({ username, password: generatedPassword, sudo: sudoAccess }),
+    ];
+    allStepResults.push(...await runCommands(initCmds, sshOpts, { osName: tpl.name, packageManager }));
+    tracker.done("initial_setup", { done: username ? `Initial setup done — account "${username}" created` : "Initial setup complete" });
 
-    let stepNum = 0;
-    for (const s of plan) {
-      stepNum += 1;
-      step("provisioning", `Setting up your environment (step ${stepNum} of ${plan.length})…`);
-      let res = await runSsh({ host: ip, port: sshPort, username: rootUser, password: rootPass, command: s.cmd })
-        .catch((e) => ({ code: 1, stdout: "", stderr: e.message }));
+    // --- Security baseline: Defender, OMI Client, Guardicore (best-effort) ---
+    tracker.start("default_packages");
+    const agentPkgs = DEFAULT_AGENTS.map((a) => a.pkg);
+    const agentCmd = packageInstallCommand({ packageManager, packages: agentPkgs });
+    const agentResults = await runCommands([{ name: "install security baseline", cmd: agentCmd }], sshOpts, { osName: tpl.name, packageManager });
+    allStepResults.push(...agentResults);
+    tracker.done("default_packages", { done: `Security baseline applied — ${DEFAULT_AGENTS.map((a) => a.name.split(" ")[0]).join(", ")}` });
 
-      // On failure, ask AI for a fix (cached) and retry once.
-      if (res.code !== 0) {
-        const fix = await aiTroubleshoot({ command: s.cmd, stderr: res.stderr, osName: tpl.name, packageManager }).catch(() => null);
-        if (fix?.fix) {
-          updateJob(jobId, { message: "Resolving a setup issue automatically…" });
-          await runSsh({ host: ip, port: sshPort, username: rootUser, password: rootPass, command: fix.fix }).catch(() => {});
-          res = await runSsh({ host: ip, port: sshPort, username: rootUser, password: rootPass, command: s.cmd })
-            .catch((e) => ({ code: 1, stdout: "", stderr: e.message }));
-        }
-      }
-      stepResults.push({ name: s.name, ok: res.code === 0, stderr: res.code === 0 ? "" : (res.stderr || "").slice(0, 300) });
+    // --- Requested software (only if the user asked for any) ---
+    if (packages.length) {
+      tracker.start("requested_packages");
+      const reqCmd = packageInstallCommand({ packageManager, packages });
+      allStepResults.push(...await runCommands([{ name: `install ${packages.join(", ")}`, cmd: reqCmd }], sshOpts, { osName: tpl.name, packageManager }));
+      tracker.done("requested_packages", { done: `Installed: ${packages.join(", ")}` });
+    } else {
+      tracker.skip("requested_packages", { done: "No additional software requested" });
     }
 
-    // 8) Validate: confirm each requested package is present.
-    step("provisioning", "Running final checks…");
+    // --- Validate: confirm each requested package is present ---
+    tracker.start("validate");
     const validations = [];
     for (const pkg of packages) {
       const check = await runSsh({
-        host: ip, port: sshPort, username: rootUser, password: rootPass,
+        ...sshOpts,
         command: `command -v ${pkg} >/dev/null 2>&1 || rpm -q ${pkg} >/dev/null 2>&1 || dpkg -s ${pkg} >/dev/null 2>&1 || apk info -e ${pkg} >/dev/null 2>&1 && echo OK || echo MISSING`,
       }).catch(() => ({ stdout: "MISSING" }));
       validations.push({ package: pkg, present: /OK/.test(check.stdout || "") });
     }
-
-    const stepsOk = stepResults.every((r) => r.ok);
     const pkgsOk = validations.every((v) => v.present);
-    const allOk = stepsOk && pkgsOk;
+    tracker.done("validate", { done: packages.length ? `Validated ${validations.filter((v) => v.present).length}/${validations.length} package(s)` : "Server validated end-to-end" });
 
-    // 9) Final status uses the monitor's categories: accessible+ok => success.
-    //    The streamed message stays a plain, credential-free sentence; the full
-    //    details (incl. the login password) live in `result` for the Summary
-    //    popup, so nothing sensitive appears in the deployment monitor stream.
-    const message = allOk
-      ? `Your VM "${hostname}" is ready to use. Open the summary for login details.`
-      : `Your VM "${hostname}" is ready, but some setup steps had issues. Open the summary for details.`;
+    // --- Summarize ---
+    tracker.start("summarize");
+    const allOk = allStepResults.every((r) => r.ok) && pkgsOk;
+    tracker.done("summarize", { done: allOk ? "All done — your server is ready 🎉" : "Done — with a few warnings (see summary)" });
 
     updateJob(jobId, {
       status: "ready",
-      message,
+      message: allOk
+        ? `Your VM "${hostname}" is ready to use. Open the summary for login details.`
+        : `Your VM "${hostname}" is ready, but some setup steps had issues. Open the summary for details.`,
       resources: [{ ...resource, sshReady: true }],
       result: {
-        hostname,
-        vmid: newVmid,
-        ip,
-        environment,
-        username: username || null,
-        generatedPassword,
-        sudo: sudoAccess,
-        validations,
-        steps: stepResults,
-        allOk,
+        hostname, vmid: newVmid, ip, environment,
+        username: username || null, generatedPassword, sudo: sudoAccess,
+        defaultAgents: DEFAULT_AGENTS.map((a) => a.name),
+        validations, steps: allStepResults, allOk,
       },
     });
   } catch (err) {
-    // Keep the streamed line friendly; retain the raw error for the summary.
-    updateJob(jobId, {
-      status: "failed",
-      message: "Something went wrong while creating your VM. Open the summary for details.",
-      error: err.message,
-    });
+    // Mark the active step failed + skip the rest, and fail the job. The raw
+    // error is kept for the summary; jobStore raises the ServiceNow incident.
+    tracker.fail("Something went wrong while creating your VM. Open the summary for details.", err.message);
   }
 }
 
@@ -277,10 +292,13 @@ export async function runInternalJob(jobId, payload) {
       const api = INTERNAL_APIS[step.api];
       if (!api) throw new Error(`No handler configured for workflow step "${step.api}"`);
 
-      // Mark in-flight, then make the real call — its own latency provides the
-      // timing (no artificial delay).
+      // A configured system is called for real (its own latency provides the
+      // timing); an unconfigured one is simulated — add a short pause so the
+      // monitor still streams each step like a real integration.
+      const simulated = !step.system || !isSystemConfigured(step.system);
       steps[i].state = "active";
       updateJob(jobId, { status: "provisioning", message: `${step.label}…`, steps: snapshot() });
+      if (simulated) await sleep(1500);
 
       let res;
       try {

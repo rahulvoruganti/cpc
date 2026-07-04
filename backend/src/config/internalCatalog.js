@@ -9,15 +9,18 @@
 //
 // Edit this file to add / reorder steps or add more internal templates.
 
+// `system` is the settings key (INTERNAL_<SYSTEM>_URL) the step calls. It lets
+// the provisioner skip a step whose endpoint isn't configured. Note ITSM backs
+// both the opening and the handover step.
 export const INTERNAL_WORKFLOW = [
-  { key: "itsm", api: "openServiceRequest", label: "Registering the service request in ITSM" },
-  { key: "ipam", api: "allocateIpAddress", label: "Requesting an IP address from IPAM" },
-  { key: "compute", api: "reserveCompute", label: "Reserving compute capacity in the datacenter" },
-  { key: "storage", api: "reserveStorage", label: "Reserving a storage volume on the SAN" },
-  { key: "firewall", api: "requestFirewallAccess", label: "Requesting firewall access rules" },
-  { key: "dns", api: "createDnsRecord", label: "Creating the DNS record" },
-  { key: "cmdb", api: "registerCmdbItem", label: "Registering the configuration item in the CMDB" },
-  { key: "handover", api: "finalizeHandover", label: "Finalizing and handing over the workspace" },
+  { key: "itsm", api: "openServiceRequest", system: "ITSM", label: "Registering the service request in ITSM" },
+  { key: "ipam", api: "allocateIpAddress", system: "IPAM", label: "Requesting an IP address from IPAM" },
+  { key: "compute", api: "reserveCompute", system: "COMPUTE", label: "Reserving compute capacity in the datacenter" },
+  { key: "storage", api: "reserveStorage", system: "STORAGE", label: "Reserving a storage volume on the SAN" },
+  { key: "firewall", api: "requestFirewallAccess", system: "FIREWALL", label: "Requesting firewall access rules" },
+  { key: "dns", api: "createDnsRecord", system: "DNS", label: "Creating the DNS record" },
+  { key: "cmdb", api: "registerCmdbItem", system: "CMDB", label: "Registering the configuration item in the CMDB" },
+  { key: "handover", api: "finalizeHandover", system: "ITSM", label: "Finalizing and handing over the workspace" },
 ];
 
 export const INTERNAL_TEMPLATES = [
