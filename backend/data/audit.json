@@ -3324,6 +3324,51 @@
         "jobId": "eUoDG2T1MR",
         "status": "provisioning"
       }
+    },
+    {
+      "id": "5C-BQAYmYE",
+      "timestamp": "2026-07-04T07:06:59.841Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "vm.connect",
+      "target": "VMID 102 (10.161.230.24)",
+      "status": "success",
+      "detail": {
+        "sshUser": "cpc"
+      }
+    },
+    {
+      "id": "PCZD3YTwYJ",
+      "timestamp": "2026-07-04T07:07:21.200Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "vm.connect",
+      "target": "VMID 102 (10.161.230.24)",
+      "status": "success",
+      "detail": {
+        "sshUser": "cpc"
+      }
+    },
+    {
+      "id": "4jZwfmHkwz",
+      "timestamp": "2026-07-04T07:21:00.690Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "auth.login",
+      "target": "",
+      "status": "success",
+      "detail": {
+        "method": "local"
+      }
     }
   ]
 }

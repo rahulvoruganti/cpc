@@ -122,6 +122,10 @@ function SshTerminal({ vmid, ip, hostname, credentials, onClose }) {
     };
 
     const resizeObserver = new ResizeObserver(() => {
+      // While minimized the terminal is display:none (no layout box); fitting to a
+      // zero-size element throws. Skip until it's visible again — the observer
+      // re-fires with real dimensions when the panel is restored.
+      if (!containerRef.current || containerRef.current.offsetParent === null) return;
       fitAddon.fit();
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
@@ -146,26 +150,65 @@ function SshTerminal({ vmid, ip, hostname, credentials, onClose }) {
 
 export default function TerminalModal({ vmid, ip, hostname, onClose }) {
   const [credentials, setCredentials] = useState(null);
+  const [minimized, setMinimized] = useState(false);
+
+  // Clicking the backdrop minimizes an active session (keeping the SSH
+  // connection alive, like the chat/monitor panels) rather than tearing it
+  // down. Before login there's nothing to preserve, so it just closes.
+  const handleBackdropClick = (e) => {
+    if (e.target !== e.currentTarget) return;
+    if (credentials) setMinimized(true);
+    else onClose();
+  };
 
   return (
-    <div className="terminal-overlay" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`terminal-modal ${!credentials ? "terminal-modal-login" : ""}`}>
-        <div className="terminal-modal-header">
-          <span>
-            <span className="terminal-dot green" />
-            <span className="terminal-dot yellow" />
-            <span className="terminal-dot red" />
-            &nbsp;&nbsp;{hostname} — {ip}
-          </span>
-          <button className="close-btn" onClick={onClose}>×</button>
-        </div>
+    <>
+      {/* The overlay stays mounted while minimized (just display:none) so the
+          SshTerminal — and its WebSocket — is never unmounted. */}
+      <div
+        className={`terminal-overlay ${minimized ? "terminal-overlay-hidden" : ""}`}
+        onClick={handleBackdropClick}
+      >
+        <div className={`terminal-modal ${!credentials ? "terminal-modal-login" : ""}`}>
+          <div className="terminal-modal-header">
+            <span>
+              <span className="terminal-dot green" />
+              <span className="terminal-dot yellow" />
+              <span className="terminal-dot red" />
+              &nbsp;&nbsp;{hostname} — {ip}
+            </span>
+            <span className="terminal-header-actions">
+              {credentials && (
+                <button
+                  className="terminal-min-btn"
+                  onClick={() => setMinimized(true)}
+                  title="Minimize session"
+                  aria-label="Minimize session"
+                >−</button>
+              )}
+              <button className="close-btn" onClick={onClose} title="Close session" aria-label="Close session">×</button>
+            </span>
+          </div>
 
-        {!credentials
-          ? <LoginForm hostname={hostname} ip={ip} onConnect={setCredentials} />
-          : <SshTerminal vmid={vmid} ip={ip} hostname={hostname} credentials={credentials} onClose={onClose} />
-        }
+          {!credentials
+            ? <LoginForm hostname={hostname} ip={ip} onConnect={setCredentials} />
+            : <SshTerminal vmid={vmid} ip={ip} hostname={hostname} credentials={credentials} onClose={onClose} />
+          }
+        </div>
       </div>
-    </div>
+
+      {minimized && credentials && (
+        <button
+          className="terminal-min-pill"
+          onClick={() => setMinimized(false)}
+          title="Restore SSH session"
+        >
+          <span className="terminal-dot green" />
+          <span className="terminal-min-pill-label">{hostname} — SSH</span>
+          <span className="terminal-min-pill-restore" aria-hidden="true">▢</span>
+        </button>
+      )}
+    </>
   );
 }
 

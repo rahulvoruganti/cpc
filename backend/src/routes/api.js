@@ -8,6 +8,7 @@ import { getJob, listJobs } from "../services/jobStore.js";
 import { logAudit } from "../services/auditService.js";
 import { requireAuth } from "../middleware/auth.js";
 import { getTemplateMappings, getNetworkMappings } from "../services/mappingStore.js";
+import { getCostRates } from "../services/settingsStore.js";
 import {
   submitProvisionRequest,
   listProvisionRequests,
@@ -63,6 +64,11 @@ router.get("/catalog/template-defaults", (req, res) => {
     res.json({});
   }
 });
+
+// Per-month unit prices used to estimate resource cost on the provisioning
+// form. Admin-configured under Settings → Cost estimation; readable by any
+// authenticated user so the live estimate can render.
+router.get("/catalog/cost-rates", (req, res) => res.json(getCostRates()));
 
 // Environments the user can deploy into = admin-labelled networks (Mappings).
 router.get("/catalog/environments", (req, res) => {

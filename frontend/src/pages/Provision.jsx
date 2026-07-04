@@ -1,8 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   getVmTemplates, getContainerTemplates, getStacks, getEnvironments, getTemplateDefaults,
-  provisionVm, provisionInternal, provisionContainer, provisionStack,
+  getCostRates, provisionVm, provisionInternal, provisionContainer, provisionStack,
 } from "../api/client.js";
+
+// Sensible fallbacks so the estimate renders even before the rates load.
+const DEFAULT_COST_RATES = { perCpu: 21.5, perGbRam: 1, perGbStorage: 0.14, currency: "EUR" };
+
+const CURRENCY_SYMBOLS = { EUR: "€", USD: "$", GBP: "£" };
+
+function formatMoney(amount, currency = "EUR") {
+  const symbol = CURRENCY_SYMBOLS[currency] || "";
+  const value = Number.isFinite(amount) ? amount : 0;
+  return `${symbol}${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
 
 // Look up a template's default packages (case-insensitive by name, then id).
 function defaultPackagesFor(item, defaultsMap) {
@@ -122,7 +133,7 @@ function SearchablePackageDropdown({
   );
 }
 
-function ProvisionForm({ selected, environments = [], templateDefaults = {}, onSubmit, busy, onClose }) {
+function ProvisionForm({ selected, environments = [], templateDefaults = {}, costRates = DEFAULT_COST_RATES, onSubmit, busy, onClose }) {
   const item = selected.item;
   const defaultPackages = defaultPackagesFor(item, templateDefaults);
   const isInternal = item.provider === "internal";
@@ -163,6 +174,20 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, onS
   const hasVmExtras = !isVm || (form.environment && form.username.trim().length > 0);
   const isFormValid = hasHostname && hasCpu && hasMemory && hasDisk && hasVmExtras;
 
+  // Live monthly cost estimate — recomputed whenever the requested resources or
+  // the admin-configured rates change. Containers have no separate disk, so
+  // storage is excluded for them.
+  const cost = useMemo(() => {
+    const cpu = Number.isFinite(form.cpu) ? Math.max(0, form.cpu) : 0;
+    const memoryGB = Number.isFinite(form.memoryGB) ? Math.max(0, form.memoryGB) : 0;
+    const diskGB = isContainer || !Number.isFinite(form.diskGB) ? 0 : Math.max(0, form.diskGB);
+    const cpuCost = cpu * (costRates.perCpu || 0);
+    const ramCost = memoryGB * (costRates.perGbRam || 0);
+    const storageCost = diskGB * (costRates.perGbStorage || 0);
+    return { cpuCost, ramCost, storageCost, total: cpuCost + ramCost + storageCost, hasStorage: !isContainer };
+  }, [form.cpu, form.memoryGB, form.diskGB, isContainer, costRates]);
+  const currency = costRates.currency || "EUR";
+
   return (
     <div className="card card-pad provision-config-panel provision-modal-card">
       <div className="provision-modal-head">
@@ -175,6 +200,22 @@ function ProvisionForm({ selected, environments = [], templateDefaults = {}, onS
       </div>
 
       {item.description && <p className="muted provision-config-desc">{item.description}</p>}
+
+      <div className="cost-estimate" role="status" aria-live="polite">
+        <div className="cost-estimate-head">
+          <span className="cost-estimate-label">Estimated cost</span>
+          <span className="cost-estimate-total">
+            {formatMoney(cost.total, currency)}<span className="cost-estimate-period"> / month</span>
+          </span>
+        </div>
+        <div className="cost-estimate-breakdown">
+          <span>{form.cpu || 0} CPU × {formatMoney(costRates.perCpu, currency)} = {formatMoney(cost.cpuCost, currency)}</span>
+          <span>{form.memoryGB || 0} GB RAM × {formatMoney(costRates.perGbRam, currency)} = {formatMoney(cost.ramCost, currency)}</span>
+          {cost.hasStorage && (
+            <span>{form.diskGB || 0} GB storage × {formatMoney(costRates.perGbStorage, currency)} = {formatMoney(cost.storageCost, currency)}</span>
+          )}
+        </div>
+      </div>
 
       {isInternal && (
         <div className="card card-pad" style={{ background: "var(--surface-2, rgba(0,0,0,0.03))", marginBottom: 16 }}>
@@ -320,6 +361,7 @@ export default function Provision({ embedded = false }) {
   const [stacks, setStacks] = useState([]);
   const [environments, setEnvironments] = useState([]);
   const [templateDefaults, setTemplateDefaults] = useState({});
+  const [costRates, setCostRates] = useState(DEFAULT_COST_RATES);
   const [kindFilter, setKindFilter] = useState("all");
   const [query, setQuery] = useState("");
   const [pageSize, setPageSize] = useState(20);
@@ -334,6 +376,7 @@ export default function Provision({ embedded = false }) {
     getStacks().then(setStacks).catch(() => {});
     getEnvironments().then(setEnvironments).catch(() => {});
     getTemplateDefaults().then(setTemplateDefaults).catch(() => {});
+    getCostRates().then(setCostRates).catch(() => {});
   }, []);
 
   const rows = useMemo(() => {
@@ -543,7 +586,7 @@ export default function Provision({ embedded = false }) {
       {selected && (
         <div className="provision-modal-backdrop" onClick={() => setSelected(null)}>
           <div className="provision-modal-shell" onClick={(e) => e.stopPropagation()}>
-            <ProvisionForm selected={selected} environments={environments} templateDefaults={templateDefaults} busy={busy} onSubmit={submit} onClose={() => setSelected(null)} />
+            <ProvisionForm selected={selected} environments={environments} templateDefaults={templateDefaults} costRates={costRates} busy={busy} onSubmit={submit} onClose={() => setSelected(null)} />
           </div>
         </div>
       )}

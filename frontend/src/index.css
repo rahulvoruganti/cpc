@@ -1270,6 +1270,51 @@ a { color: var(--accent); text-decoration: none; }
   text-align: center;
 }
 
+/* Provision — live cost estimate banner */
+.cost-estimate {
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--line) 70%, var(--brand));
+  background: color-mix(in srgb, var(--surface) 82%, var(--brand-tint));
+}
+
+.cost-estimate-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cost-estimate-label {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.cost-estimate-total {
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--brand-dark);
+}
+
+.cost-estimate-period {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.cost-estimate-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
 /* Container hosting — namespace meta badges row */
 .ch-ns-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 
@@ -1641,6 +1686,40 @@ a { color: var(--accent); text-decoration: none; }
 .terminal-overlay {
   position: fixed; inset: 0; background: rgba(10, 14, 24, 0.7);
   display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+/* Minimized: keep the terminal mounted (SSH stays connected) but hidden. */
+.terminal-overlay-hidden { display: none; }
+
+.terminal-header-actions { display: inline-flex; align-items: center; gap: 6px; }
+.terminal-min-btn {
+  background: none; border: none; font-size: 20px; cursor: pointer;
+  color: #94a3b8; opacity: 0.7; line-height: 1; padding: 0 4px;
+}
+.terminal-min-btn:hover { opacity: 1; }
+
+/* Floating pill shown while a session is minimized — click to restore. Sits
+   bottom-left so it never collides with the chat bubble (bottom-right). */
+.terminal-min-pill {
+  position: fixed; bottom: 24px; left: 24px; z-index: 1000;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-radius: 999px; cursor: pointer;
+  background: #161e30; color: #e2e8f0;
+  border: 1px solid #29344a;
+  font-family: var(--font-mono); font-size: 12.5px;
+  box-shadow: 0 14px 34px rgba(10, 14, 24, 0.4);
+  transition: transform 0.12s, box-shadow 0.12s, border-color 0.12s;
+}
+.terminal-min-pill:hover {
+  transform: translateY(-2px);
+  border-color: var(--brand);
+  box-shadow: 0 18px 42px rgba(10, 14, 24, 0.5);
+}
+.terminal-min-pill .terminal-dot { animation: chat-live-blink 2s ease-in-out infinite; }
+.terminal-min-pill-label { font-weight: 600; }
+.terminal-min-pill-restore { opacity: 0.6; font-size: 12px; }
+
+@media (max-width: 720px) {
+  .terminal-min-pill { left: 14px; bottom: 14px; }
 }
 .terminal-modal {
   width: 920px; max-width: calc(100vw - 32px);
