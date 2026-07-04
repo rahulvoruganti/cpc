@@ -3339,6 +3339,21 @@
         "jobId": "eUoDG2T1MR",
         "status": "provisioning"
       }
+    },
+    {
+      "id": "nKRxHJin9O",
+      "timestamp": "2026-07-04T07:21:35.134Z",
+      "actor": {
+        "id": "ayqiYZcM",
+        "username": "admin",
+        "role": "admin"
+      },
+      "action": "auth.login",
+      "target": "",
+      "status": "success",
+      "detail": {
+        "method": "local"
+      }
     }
   ]
 }

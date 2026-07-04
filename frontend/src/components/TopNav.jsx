@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { getMyPreferences, updateMyPreferences } from "../api/client.js";
 
 const THEMES = [
+  { id: "colruyt", label: "Colruyt" },
   { id: "slate", label: "Slate" },
   { id: "forest", label: "Forest" },
   { id: "sunrise", label: "Sunrise" },
@@ -15,7 +16,7 @@ function initials(name = "") {
 
 export default function TopNav() {
   const { user, signOut, patchPreferences, isAdmin } = useAuth();
-  const [theme, setTheme] = useState(() => user?.preferences?.theme || "slate");
+  const [theme, setTheme] = useState(() => user?.preferences?.theme || "colruyt");
   const [showBackground, setShowBackground] = useState(() => user?.preferences?.showBackground ?? true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [menuView, setMenuView] = useState("root");
