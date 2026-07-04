@@ -30,53 +30,6 @@
       "updatedAt": "2026-07-03T07:07:59.093Z"
     },
     {
-      "id": "LGtHt2x8sPpz",
-      "kind": "vm",
-      "payload": {
-        "templateId": "alpine",
-        "hostname": "alpine-llm-01",
-        "cpu": 8,
-        "memoryGB": 32,
-        "diskGB": 100,
-        "packages": [
-          "python",
-          "nodejs"
-        ],
-        "packageSelection": {
-          "recommendedDefaults": [
-            "python",
-            "nodejs"
-          ],
-          "additional": [],
-          "selected": [
-            "python",
-            "nodejs"
-          ],
-          "effective": [
-            "python",
-            "nodejs"
-          ]
-        }
-      },
-      "requestedBy": "admin",
-      "source": "portal",
-      "status": "rejected",
-      "requiresApproval": true,
-      "policy": {
-        "cpu": 2,
-        "memoryGB": 4,
-        "diskGB": 50
-      },
-      "approvedBy": null,
-      "approvedAt": null,
-      "rejectedBy": "admin",
-      "rejectedAt": "2026-07-04T03:55:24.793Z",
-      "rejectionReason": "test",
-      "jobId": null,
-      "createdAt": "2026-07-03T07:05:08.981Z",
-      "updatedAt": "2026-07-04T03:55:24.793Z"
-    },
-    {
       "id": "2QWdDHrDJ0Ty",
       "kind": "vm",
       "payload": {
@@ -612,19 +565,38 @@
       "updatedAt": "2026-07-04T03:54:57.690Z"
     },
     {
-      "id": "GUUIrF2NGhHc",
-      "kind": "internal",
+      "id": "LGtHt2x8sPpz",
+      "kind": "vm",
       "payload": {
-        "templateId": "internal-linux",
-        "hostname": "test",
-        "cpu": 2,
-        "memoryGB": 2,
-        "diskGB": 50
+        "templateId": "alpine",
+        "hostname": "alpine-llm-01",
+        "cpu": 8,
+        "memoryGB": 32,
+        "diskGB": 100,
+        "packages": [
+          "python",
+          "nodejs"
+        ],
+        "packageSelection": {
+          "recommendedDefaults": [
+            "python",
+            "nodejs"
+          ],
+          "additional": [],
+          "selected": [
+            "python",
+            "nodejs"
+          ],
+          "effective": [
+            "python",
+            "nodejs"
+          ]
+        }
       },
       "requestedBy": "admin",
       "source": "portal",
-      "status": "failed",
-      "requiresApproval": false,
+      "status": "rejected",
+      "requiresApproval": true,
       "policy": {
         "cpu": 2,
         "memoryGB": 4,
@@ -632,40 +604,12 @@
       },
       "approvedBy": null,
       "approvedAt": null,
-      "rejectedBy": null,
-      "rejectedAt": null,
-      "rejectionReason": null,
-      "jobId": "8sTXCmGxxw",
-      "createdAt": "2026-07-04T04:28:33.671Z",
-      "updatedAt": "2026-07-04T05:56:48.303Z"
-    },
-    {
-      "id": "WVksR1BtKNMC",
-      "kind": "internal",
-      "payload": {
-        "templateId": "internal-linux",
-        "hostname": "test123",
-        "cpu": 2,
-        "memoryGB": 2,
-        "diskGB": 50
-      },
-      "requestedBy": "admin",
-      "source": "portal",
-      "status": "failed",
-      "requiresApproval": false,
-      "policy": {
-        "cpu": 2,
-        "memoryGB": 4,
-        "diskGB": 50
-      },
-      "approvedBy": null,
-      "approvedAt": null,
-      "rejectedBy": null,
-      "rejectedAt": null,
-      "rejectionReason": null,
-      "jobId": "LL5HVulgC-",
-      "createdAt": "2026-07-04T04:29:07.422Z",
-      "updatedAt": "2026-07-04T05:56:48.307Z"
+      "rejectedBy": "admin",
+      "rejectedAt": "2026-07-04T03:55:24.793Z",
+      "rejectionReason": "test",
+      "jobId": null,
+      "createdAt": "2026-07-03T07:05:08.981Z",
+      "updatedAt": "2026-07-04T03:55:24.793Z"
     },
     {
       "id": "5MXnF7h3Py4b",
@@ -722,6 +666,62 @@
       "jobId": "ZVl_eYTC7F",
       "createdAt": "2026-07-04T04:43:09.706Z",
       "updatedAt": "2026-07-04T04:43:10.380Z"
+    },
+    {
+      "id": "GUUIrF2NGhHc",
+      "kind": "internal",
+      "payload": {
+        "templateId": "internal-linux",
+        "hostname": "test",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50
+      },
+      "requestedBy": "admin",
+      "source": "portal",
+      "status": "failed",
+      "requiresApproval": false,
+      "policy": {
+        "cpu": 2,
+        "memoryGB": 4,
+        "diskGB": 50
+      },
+      "approvedBy": null,
+      "approvedAt": null,
+      "rejectedBy": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "jobId": "8sTXCmGxxw",
+      "createdAt": "2026-07-04T04:28:33.671Z",
+      "updatedAt": "2026-07-04T05:56:48.303Z"
+    },
+    {
+      "id": "WVksR1BtKNMC",
+      "kind": "internal",
+      "payload": {
+        "templateId": "internal-linux",
+        "hostname": "test123",
+        "cpu": 2,
+        "memoryGB": 2,
+        "diskGB": 50
+      },
+      "requestedBy": "admin",
+      "source": "portal",
+      "status": "failed",
+      "requiresApproval": false,
+      "policy": {
+        "cpu": 2,
+        "memoryGB": 4,
+        "diskGB": 50
+      },
+      "approvedBy": null,
+      "approvedAt": null,
+      "rejectedBy": null,
+      "rejectedAt": null,
+      "rejectionReason": null,
+      "jobId": "LL5HVulgC-",
+      "createdAt": "2026-07-04T04:29:07.422Z",
+      "updatedAt": "2026-07-04T05:56:48.307Z"
     },
     {
       "id": "mou20As1LTwY",

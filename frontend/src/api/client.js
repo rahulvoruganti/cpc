@@ -40,6 +40,7 @@ export const getContainerTemplates = () => api.get("/catalog/container-templates
 export const getStacks = () => api.get("/catalog/stacks").then((r) => r.data);
 export const getTemplateDefaults = () => api.get("/catalog/template-defaults").then((r) => r.data);
 export const getEnvironments = () => api.get("/catalog/environments").then((r) => r.data);
+export const getCostRates = () => api.get("/catalog/cost-rates").then((r) => r.data);
 export const provisionVm = (p) => api.post("/provision/vm", p).then((r) => r.data);
 export const provisionInternal = (p) => api.post("/provision/internal", p).then((r) => r.data);
 export const provisionContainer = (p) => api.post("/provision/container", p).then((r) => r.data);

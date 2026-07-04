@@ -80,6 +80,17 @@ export const SETTING_GROUPS = [
     ],
   },
   {
+    id: "cost",
+    title: "Cost estimation",
+    note: "Applies immediately. Per-month unit prices (in euro) used to estimate the cost of a resource on the provisioning form.",
+    live: true,
+    fields: [
+      { key: "COST_PER_CPU", label: "Per CPU core (€ / month)", type: "number", placeholder: "21.50", default: "21.50" },
+      { key: "COST_PER_GB_RAM", label: "Per GB RAM (€ / month)", type: "number", placeholder: "1", default: "1" },
+      { key: "COST_PER_GB_STORAGE", label: "Per GB storage (€ / month)", type: "number", placeholder: "0.14", default: "0.14" },
+    ],
+  },
+  {
     id: "approvals",
     title: "Approval policy",
     note: "Takes effect after a backend restart.",
@@ -176,6 +187,11 @@ export function getEffectiveSettings() {
           // meaning (auto-approve ON == env !== "false").
           return { ...base, value: raw !== "false" };
         }
+        // Fall back to the field's default when nothing has been saved yet, so
+        // the form shows a sensible starting value instead of a blank box.
+        if (raw === "" && field.default != null) {
+          return { ...base, value: field.default };
+        }
         return { ...base, value: raw };
       }),
     })),
@@ -213,6 +229,25 @@ export function updateSettings(patch = {}) {
   writeOverrides(overrides);
   applyToEnv();
   return getEffectiveSettings();
+}
+
+// Default per-month unit prices (euro) used when the admin hasn't set them.
+const DEFAULT_COST_RATES = { perCpu: 21.5, perGbRam: 1, perGbStorage: 0.14 };
+
+// Effective cost-estimation rates. Reads the current (possibly overridden) env
+// values and falls back to the defaults for anything blank or non-numeric.
+// Safe to expose to any authenticated user — no secrets involved.
+export function getCostRates() {
+  const num = (key, fallback) => {
+    const parsed = Number.parseFloat(process.env[key]);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+  };
+  return {
+    perCpu: num("COST_PER_CPU", DEFAULT_COST_RATES.perCpu),
+    perGbRam: num("COST_PER_GB_RAM", DEFAULT_COST_RATES.perGbRam),
+    perGbStorage: num("COST_PER_GB_STORAGE", DEFAULT_COST_RATES.perGbStorage),
+    currency: "EUR",
+  };
 }
 
 // Apply persisted overrides as soon as this module is imported, so it must be
